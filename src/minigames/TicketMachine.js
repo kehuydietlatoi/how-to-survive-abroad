@@ -95,6 +95,17 @@ const help = {
   },
 };
 
+const WRONG_TICKET = {
+  short: {
+    en: "A **Kurzstrecke** only covers a few stops. Airport → Lindenstraße is much longer. Choose a ticket that covers the **whole trip**.",
+    vi: "**Kurzstrecke** chỉ đi được vài trạm. Sân bay → Lindenstraße xa hơn nhiều. Hãy chọn vé bao trọn **cả hành trình**.",
+  },
+  p1: {
+    en: "**Preisstufe 1** is the city zone only, and the **airport is outside it**. Pick a zone (Preisstufe) that includes the airport.",
+    vi: "**Preisstufe 1** chỉ là vùng nội thành, **sân bay nằm ngoài vùng này**. Hãy chọn vùng giá (Preisstufe) có cả sân bay.",
+  },
+};
+
 const fmt = (v) => `${v.toFixed(2).replace(".", ",")} €`;
 
 export const TicketMachine = {
@@ -104,7 +115,7 @@ export const TicketMachine = {
       root.className = "show";
       document.body.classList.add("mg-ui");
       let mlang = "de"; // machine language
-      const state = { ticket: null, adult: null, paid: 0, rejected50: false, sawDT: false, used: new Set(), card: false };
+      const state = { ticket: null, adult: null, paid: 0, rejected50: false, sawDT: false, used: new Set(), card: false, wrongTickets: 0, triedChild: false };
       const L = (de, en) => (mlang === "de" ? de : en);
 
       const render = (screen, msg = "", bad = false) => {
@@ -187,6 +198,13 @@ export const TicketMachine = {
                 render("dt", esc(L("Das Deutschlandticket gibt es nur im Abo (online / App).", "The Deutschlandticket is only sold as a subscription (online / app).")), true);
                 return;
               }
+              if (!tk.valid) {
+                // Not valid for this trip: explain and let the player choose again.
+                sfx.bad();
+                state.wrongTickets++;
+                render("ticket", "⚠️ " + rich(t(WRONG_TICKET[tk.id])), true);
+                return;
+              }
               state.ticket = tk;
               render("passenger");
             })
@@ -194,8 +212,17 @@ export const TicketMachine = {
         root.querySelectorAll("[data-adult]").forEach(
           (b) =>
             (b.onclick = () => {
+              if (b.dataset.adult !== "1") {
+                sfx.bad();
+                state.triedChild = true;
+                render("passenger", "⚠️ " + rich(t({
+                  en: "You're an adult, so you need an **Erwachsener** ticket. Using a child ticket (Kind) as an adult counts as riding without a valid ticket: **€60** penalty.",
+                  vi: "Bạn là người lớn nên cần vé **Erwachsener**. Người lớn dùng vé trẻ em (Kind) bị coi là đi không có vé hợp lệ: phạt **60 €**.",
+                })), true);
+                return;
+              }
               sfx.click();
-              state.adult = b.dataset.adult === "1";
+              state.adult = true;
               render("pay");
             })
         );
@@ -242,15 +269,16 @@ export const TicketMachine = {
         root.innerHTML = "";
         const tk = state.ticket;
         const valid = tk.valid && state.adult;
-        let score = 20 + tk.points + (state.adult ? 20 : 0) + (state.rejected50 ? 0 : 10);
-        score = Math.min(100, score);
+        // Mistakes were corrected on the spot; each one still costs points.
+        let score = 20 + tk.points + 20 + (state.rejected50 ? 0 : 10) - state.wrongTickets * 15 - (state.triedChild ? 15 : 0);
+        score = Math.max(0, Math.min(100, score));
         const tips = [
           {
             tip: {
               en: "Airports are often in a higher fare zone (Preisstufe) than the city. Buy a ticket that covers the **whole trip**, incl. bus transfers.",
               vi: "Sân bay thường thuộc vùng giá (Preisstufe) cao hơn trung tâm. Mua vé bao trọn **cả hành trình**, kể cả chuyển sang xe buýt.",
             },
-            good: tk.valid,
+            good: state.wrongTickets === 0,
           },
         ];
         if (tk.id === "day")
@@ -258,7 +286,7 @@ export const TicketMachine = {
             tip: { en: "A day ticket works, but a single ticket is cheaper if you only make one trip.", vi: "Vé ngày dùng được, nhưng nếu chỉ đi một chuyến thì vé lượt rẻ hơn." },
             good: false,
           });
-        if (!state.adult)
+        if (state.triedChild)
           tips.push({
             tip: { en: "Child tickets (Kind) are only for children. Adults with a child ticket count as fare dodgers.", vi: "Vé trẻ em (Kind) chỉ dành cho trẻ em. Người lớn dùng vé trẻ em bị coi là trốn vé." },
             good: false,

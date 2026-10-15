@@ -55,19 +55,24 @@ function header(panel, speaker, icon) {
 
 function continueButton(panel, close, label = "continue") {
   const b = el("button", "btn primary", esc(t(label)) + (isTouch ? "" : ' <span class="key">E</span>'));
-  b.onclick = () => close();
+  let done = false;
+  const fire = () => {
+    if (done) return;
+    done = true;
+    removeEventListener("keydown", onKey, true);
+    close();
+  };
+  b.onclick = fire;
   panel.appendChild(b);
   setTimeout(() => b.focus(), 50);
-  const onKey = (e) => {
+  function onKey(e) {
     if (["e", "enter", " "].includes(e.key.toLowerCase())) {
       e.preventDefault();
-      removeEventListener("keydown", onKey, true);
-      close();
+      fire();
     }
-  };
+  }
   // Small delay so the key press that opened the dialog doesn't close it.
-  setTimeout(() => addEventListener("keydown", onKey, true), 250);
-  b.addEventListener("click", () => removeEventListener("keydown", onKey, true));
+  setTimeout(() => !done && addEventListener("keydown", onKey, true), 250);
 }
 
 /** Show a message. */
@@ -81,10 +86,10 @@ export function info(text, { speaker, icon, card, button } = {}) {
 }
 
 /**
- * Show a multiple-choice question. Resolves with the chosen index after
- * showing the option's feedback.
+ * Show a multiple-choice question. Wrong options (see `acceptable`) show their feedback and
+ * must be retried. Resolves with { index, first } once an acceptable option was picked.
  */
-export function choice(prompt, options, { speaker, icon } = {}) {
+export function choice(prompt, options, { speaker, icon, acceptable = () => true } = {}) {
   return openDialog((panel, close) => {
     header(panel, speaker, icon);
     panel.appendChild(el("p", "text", rich(t(prompt))));
@@ -92,20 +97,43 @@ export function choice(prompt, options, { speaker, icon } = {}) {
     panel.appendChild(list);
     const keys = ["1", "2", "3", "4", "5"];
     let picked = false;
+    let first = null;
+    const tried = new Set();
     const pick = (i) => {
-      if (picked) return;
+      if (picked || tried.has(i)) return;
       picked = true;
+      if (first == null) first = i;
       removeEventListener("keydown", onKey, true);
       const opt = options[i];
-      (opt.correct ? sfx.good : opt.points > 0 ? sfx.click : sfx.bad)();
+      const ok = acceptable(opt);
+      const kind = opt.correct ? "good" : ok ? "ok" : "bad";
+      (opt.correct ? sfx.good : ok ? sfx.click : sfx.bad)();
       [...list.children].forEach((b, j) => {
         b.disabled = true;
-        if (j === i) b.classList.add(opt.correct ? "good" : opt.points > 0 ? "ok" : "bad");
+        if (j === i) b.classList.add(kind);
       });
-      const fb = el("div", `feedback ${opt.correct ? "good" : opt.points > 0 ? "ok" : "bad"}`);
-      fb.innerHTML = `<b>${esc(t(opt.correct ? "correct" : opt.points > 0 ? "hmm" : "notQuite"))}</b> ${rich(t(opt.feedback || ""))}`;
+      panel.querySelector(".feedback")?.remove();
+      panel.querySelector(".btn.primary")?.remove();
+      const fb = el("div", `feedback ${kind}`);
+      fb.innerHTML = `<b>${esc(t(opt.correct ? "correct" : ok ? "hmm" : "notQuite"))}</b> ${rich(t(opt.feedback || ""))}`;
       panel.appendChild(fb);
-      continueButton(panel, () => close(i));
+      if (ok) {
+        continueButton(panel, () => close({ index: i, first }));
+        return;
+      }
+      // Wrong: explain, then let the player pick again (the wrong option stays crossed out).
+      tried.add(i);
+      continueButton(
+        panel,
+        () => {
+          fb.remove();
+          panel.querySelector(".btn.primary")?.remove();
+          [...list.children].forEach((b, j) => (b.disabled = tried.has(j)));
+          picked = false;
+          setTimeout(() => addEventListener("keydown", onKey, true), 150);
+        },
+        "retry"
+      );
     };
     options.forEach((o, i) => {
       const b = el("button", "btn option", `<span class="num">${keys[i]}</span> ${rich(t(o.text))}`);

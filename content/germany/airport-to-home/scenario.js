@@ -64,8 +64,8 @@ export default {
           text: { en: "Just get on, I paid, so it's fine", vi: "Cứ lên tàu thôi, mình đã trả tiền rồi mà" },
           points: 0,
           feedback: {
-            en: "Risky! An unstamped ticket counts as **no ticket** at an inspection, even if you paid.",
-            vi: "Rủi ro! Vé chưa dập bị coi như **không có vé** khi bị kiểm tra, dù bạn đã trả tiền.",
+            en: "Risky! An unstamped ticket counts as **no ticket** at an inspection, even if you paid: that's a **€60** penalty on the spot.",
+            vi: "Rủi ro! Vé chưa dập bị coi như **không có vé** khi bị kiểm tra, dù bạn đã trả tiền: phạt **60 €** tại chỗ.",
           },
           next: "toPlatform",
         },
@@ -145,50 +145,13 @@ export default {
         {
           text: { en: "Pretend to be asleep", vi: "Giả vờ ngủ" },
           points: 0,
-          feedback: { en: "Nice try, they will wake you up.", vi: "Thử hay đấy, nhưng họ sẽ đánh thức bạn." },
+          feedback: {
+            en: "Nice try, they will wake you up. Riding without showing a valid ticket costs **€60**.",
+            vi: "Thử hay đấy, nhưng họ sẽ đánh thức bạn. Không xuất trình được vé hợp lệ bị phạt **60 €**.",
+          },
         },
       ],
-      nextIf: [
-        { flag: "ticketValid", equals: false, next: "fineInvalid" },
-        { flag: "stamped", equals: false, next: "fineStamp" },
-      ],
       next: "checkOk",
-    },
-    {
-      id: "fineInvalid",
-      type: "info",
-      speaker: inspector,
-      icon: "👮",
-      points: -30,
-      maxPoints: 30,
-      good: false,
-      text: {
-        en: "“This ticket isn't valid for this trip.” (wrong zone or child ticket)\nYou pay the **€60 penalty** (erhöhtes Beförderungsentgelt).",
-        vi: "“Vé này không hợp lệ cho chuyến đi.” (sai vùng giá hoặc vé trẻ em)\nBạn phải nộp **phạt 60 €** (erhöhtes Beförderungsentgelt).",
-      },
-      tip: {
-        en: "Riding without a valid ticket costs **€60** on the spot, and doing it on purpose can even be a criminal offence.",
-        vi: "Đi tàu không có vé hợp lệ bị phạt **60 €** tại chỗ; cố tình trốn vé còn có thể bị xử lý hình sự.",
-      },
-      next: "toHbf",
-    },
-    {
-      id: "fineStamp",
-      type: "info",
-      speaker: inspector,
-      icon: "👮",
-      points: -30,
-      maxPoints: 30,
-      good: false,
-      text: {
-        en: "“Not validated! Without the stamp it's not a valid ticket.”\nYou pay the **€60 penalty**. Ouch.",
-        vi: "“Chưa dập vé! Không có dấu thì vé không hợp lệ.”\nBạn bị phạt **60 €**. Đau ví quá.",
-      },
-      tip: {
-        en: "An unstamped “bitte entwerten” ticket = no ticket = **€60** penalty.",
-        vi: "Vé “bitte entwerten” chưa dập = không có vé = phạt **60 €**.",
-      },
-      next: "toHbf",
     },
     {
       id: "checkOk",
@@ -198,7 +161,10 @@ export default {
       maxPoints: 30,
       points: 30,
       text: { en: "“Danke, alles in Ordnung. Gute Fahrt!” (Thanks, all good. Have a nice trip!)", vi: "“Danke, alles in Ordnung. Gute Fahrt!” (Cảm ơn, mọi thứ ổn. Chúc đi vui vẻ!)" },
-      tip: { en: "Valid ticket + stamped = no stress at inspections.", vi: "Vé đúng + đã dập = không lo khi bị kiểm tra." },
+      tip: {
+        en: "Valid ticket + stamped = no stress at inspections. Without one you pay **€60** on the spot (erhöhtes Beförderungsentgelt).",
+        vi: "Vé đúng + đã dập = không lo khi bị kiểm tra. Không có vé hợp lệ sẽ bị phạt **60 €** tại chỗ (erhöhtes Beförderungsentgelt).",
+      },
       next: "toHbf",
     },
     {

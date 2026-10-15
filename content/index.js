@@ -1,6 +1,7 @@
 // Scenario registry shown on the menu. Each entry lazy-loads its map + script.
 import { StreetCrossing } from "../src/minigames/StreetCrossing.js";
 import { TicketMachine } from "../src/minigames/TicketMachine.js";
+import { PhoEating } from "../src/minigames/PhoEating.js";
 
 export const SCENARIOS = [
   {
@@ -36,7 +37,7 @@ export const SCENARIOS = [
     tags: [{ en: "Traffic", vi: "Giao thông" }, { en: "Street food", vi: "Ẩm thực đường phố" }],
     load: async () => {
       const [map, scenario] = await Promise.all([import("./vietnam/cross-street-pho/map.js"), import("./vietnam/cross-street-pho/scenario.js")]);
-      return { map: map.default, scenario: scenario.default, minigames: { streetCrossing: StreetCrossing }, minigameParams: { streetCrossing: { crossX: 0, roadZ: 0 } } };
+      return { map: map.default, scenario: scenario.default, minigames: { streetCrossing: StreetCrossing, phoEating: PhoEating }, minigameParams: { streetCrossing: { crossX: 0, roadZ: 0 } } };
     },
   },
 ];

@@ -62,18 +62,25 @@ export class ScenarioRunner {
     return { done: false };
   }
 
-  /** Pick option `index` of a choice step. Returns the chosen option. */
-  choose(index) {
+  /**
+   * Pick option `index` of a choice step. Wrong options must be retried in the UI until an
+   * acceptable one is chosen (see isAcceptable); pass the player's first pick as `firstIndex`
+   * so the score and journal reflect it. Returns the final chosen option.
+   */
+  choose(index, firstIndex = index) {
     const s = this.current();
     if (s.type !== "choice") throw new Error(`choose on ${s.type}`);
     const opt = s.options[index];
-    if (!opt) throw new Error(`no option ${index}`);
-    this.score += opt.points || 0;
+    const first = s.options[firstIndex];
+    if (!opt || !first) throw new Error(`no option ${index}`);
+    if (!isAcceptable(opt) && s.options.some(isAcceptable)) throw new Error(`option ${index} of ${s.id} is not acceptable`);
+    this.score += first.points || 0;
     this.maxScore += Math.max(0, ...s.options.map((o) => o.points || 0));
     if (opt.set) Object.assign(this.flags, opt.set);
-    if (opt.tip) this._addTip(opt.tip, !!opt.correct);
-    else if (s.tip) this._addTip(s.tip, !!opt.correct);
-    this.history.push({ step: s.id, option: index });
+    const good = !!first.correct;
+    if (first.tip) this._addTip(first.tip, good);
+    else if (s.tip) this._addTip(s.tip, good);
+    this.history.push({ step: s.id, option: index, first: firstIndex });
     this._advance(s, opt.next);
     return opt;
   }
@@ -136,6 +143,11 @@ export class ScenarioRunner {
   }
 }
 
+/** An option the player may continue with: correct, explicitly acceptable, or worth ≥ 5 points. */
+export function isAcceptable(opt) {
+  return !!(opt.correct || opt.acceptable || (opt.points || 0) >= 5);
+}
+
 /** Static validation used by tests and at load time in dev. */
 export function validateScenario(scenario) {
   const errors = [];
@@ -147,6 +159,7 @@ export function validateScenario(scenario) {
     for (const o of s.options || []) check(s.id, o.next);
     if (s.type !== "end" && !s.next && !(s.options || []).every((o) => o.next)) errors.push(`${s.id} has no next`);
     if (s.type === "choice" && !(s.options || []).length) errors.push(`${s.id} has no options`);
+    if (s.type === "choice" && !(s.options || []).some(isAcceptable)) errors.push(`${s.id} has no acceptable option`);
   }
   if (!scenario.steps.some((s) => s.type === "end")) errors.push("no end step");
   return errors;

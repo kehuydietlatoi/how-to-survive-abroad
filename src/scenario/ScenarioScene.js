@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { World } from "../world/World.js";
 import { Character } from "../world/Character.js";
-import { ScenarioRunner, validateScenario } from "./ScenarioRunner.js";
+import { ScenarioRunner, validateScenario, isAcceptable } from "./ScenarioRunner.js";
 import * as ui from "../ui/ui.js";
 import { t } from "../i18n/i18n.js";
 
@@ -26,6 +26,7 @@ export class ScenarioScene {
     this.disposed = false;
     this.facing = 0;
     this._head = new THREE.Vector3();
+    this._disposers = [];
     const errors = validateScenario(def.scenario);
     if (errors.length) console.error("scenario errors", errors);
   }
@@ -143,8 +144,8 @@ export class ScenarioScene {
   async _choice(step) {
     this.setRoaming(false);
     ui.setObjective(step.objective || null);
-    const idx = await ui.choice(step.prompt, step.options, { speaker: step.speaker, icon: step.icon });
-    const opt = this.runner.choose(idx);
+    const { index, first } = await ui.choice(step.prompt, step.options, { speaker: step.speaker, icon: step.icon, acceptable: isAcceptable });
+    const opt = this.runner.choose(index, first);
     await this.doActions(opt.actions);
   }
 
@@ -314,8 +315,15 @@ export class ScenarioScene {
     this.onExit?.("menu");
   }
 
+  /** Register cleanup to run if the scenario is left mid-way (e.g. back to menu during a minigame). */
+  onDispose(fn) {
+    this._disposers.push(fn);
+  }
+
   dispose() {
     this.disposed = true;
+    for (const fn of this._disposers.splice(0)) fn();
+    this.game.view = null;
     this.pendingInteract = null;
     this.game.updaters.delete(this._update);
     for (const a of this.ambient || []) a.dispose?.();

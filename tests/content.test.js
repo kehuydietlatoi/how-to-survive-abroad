@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateScenario, ScenarioRunner } from "../src/scenario/ScenarioRunner.js";
+import { validateScenario, ScenarioRunner, isAcceptable } from "../src/scenario/ScenarioRunner.js";
 import vnMap from "../content/vietnam/cross-street-pho/map.js";
 import vnScenario from "../content/vietnam/cross-street-pho/scenario.js";
 import deMap from "../content/germany/airport-to-home/map.js";
@@ -48,26 +48,24 @@ for (const [name, map, scenario] of all) {
   });
 }
 
-// Drive the German scenario through two routes and check the inspector branch.
-function playGermany({ ticketValid, stamp }) {
+// Drive the German scenario: mistakes are retried, so every route reaches a clean inspection.
+test("germany: the full route reaches the inspection and home", () => {
   const r = new ScenarioRunner(deScenario);
   r.acknowledge(); // intro
   r.interact("ticketMachine");
-  r.finishMinigame({ score: 80, passed: true, flags: { hasTicket: true, ticketValid } });
-  r.choose(stamp ? 0 : 1);
-  if (stamp) r.interact("validator");
+  r.finishMinigame({ score: 80, passed: true, flags: { hasTicket: true, ticketValid: true } });
+  assert.throws(() => r.choose(1), /not acceptable/, "boarding unstamped must be retried");
+  r.choose(0, 1);
+  r.interact("validator");
+  assert.equal(r.flags.stamped, true);
+  assert.equal(r.interact("train2Door").done, false, "wrong direction is refused");
   r.interact("train1Door");
   r.acknowledge(); // ride
-  r.choose(0); // show ticket
-  return r;
-}
+  r.choose(0, 1); // pretended to sleep first, then showed the ticket
+  assert.equal(r.current().id, "checkOk");
+});
 
-test("germany: valid + stamped ticket passes the inspection", () => {
-  assert.equal(playGermany({ ticketValid: true, stamp: true }).current().id, "checkOk");
-});
-test("germany: unstamped ticket gets fined", () => {
-  assert.equal(playGermany({ ticketValid: true, stamp: false }).current().id, "fineStamp");
-});
-test("germany: wrong ticket gets fined even if stamped", () => {
-  assert.equal(playGermany({ ticketValid: false, stamp: true }).current().id, "fineInvalid");
+test("every choice step offers at least one acceptable answer", () => {
+  for (const sc of [vnScenario, deScenario])
+    for (const s of sc.steps.filter((x) => x.type === "choice")) assert.ok(s.options.some(isAcceptable), s.id);
 });

@@ -709,6 +709,7 @@ button {
 }
 .tvm .msg.bad {
   background: #ffe1e1;
+  animation: pop 0.3s;
 }
 .tvm .slot {
   margin-top: 12px;
@@ -939,7 +940,8 @@ body.touch #prompt {
     height: 76px;
   }
 }
-body.touch #controlsHint {
+body.touch #controlsHint,
+body.mg-ui #controlsHint {
   display: none;
 }
 
@@ -949,5 +951,160 @@ body.touch #controlsHint {
 @keyframes pop {
   from {
     transform: scale(0.9);
+  }
+}
+
+/* ---------- phở eating minigame ---------- */
+.pho-top {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 24px));
+  background: var(--paper);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 10px 14px;
+  text-align: center;
+}
+.pho-title {
+  font-weight: 800;
+  font-size: 18px;
+}
+.meters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 6px 0;
+}
+.meter {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+.meter .bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #eee4f5;
+  overflow: hidden;
+}
+.meter .bar div {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+.meter.sour .bar div { background: #c8e66a; }
+.meter.spicy .bar div { background: #ff7b54; }
+.meter.fresh .bar div { background: #5cc98a; }
+.meter .bar div.over {
+  background: #e0262b;
+  animation: pulse 0.6s infinite alternate;
+}
+@keyframes pulse {
+  to { opacity: 0.5; }
+}
+.pho-msg {
+  font-size: 15px;
+  line-height: 1.3;
+  min-height: 20px;
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+.pho-msg.good { background: #e8f8ef; }
+.pho-msg.bad { background: #ffecec; }
+.pho-msg.warn { background: #fff8e0; }
+.pho-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+.pho-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 10px 6px 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.pbtn {
+  flex: 0 0 auto;
+  border: none;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 0 rgba(59, 51, 85, 0.2);
+  padding: 6px 10px;
+  min-width: 74px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 700;
+  font-size: 13px;
+  position: relative;
+}
+.pbtn .ic {
+  font-size: 26px;
+  line-height: 1.1;
+}
+.pbtn .cnt {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 0 6px;
+}
+.pbtn:disabled {
+  opacity: 0.45;
+}
+.pbtn:active:not(:disabled) {
+  transform: translateY(2px);
+}
+.pbtn.taste {
+  background: #fff8e0;
+}
+.pbtn.taste.done {
+  background: #e8f8ef;
+}
+.pbtn.glow {
+  box-shadow: 0 0 0 3px var(--accent), 0 4px 0 rgba(59, 51, 85, 0.2);
+}
+.pbtn.big {
+  min-width: 96px;
+  padding: 10px 14px;
+  font-size: 15px;
+}
+.pbtn.big .ic {
+  font-size: 34px;
+}
+.btn.go {
+  background: var(--accent);
+  color: #fff;
+}
+.pho-row.eat {
+  justify-content: center;
+}
+@media (max-width: 600px) {
+  .pho-top {
+    top: 8px;
+    padding: 8px 10px;
+  }
+  .pho-title {
+    font-size: 16px;
+  }
+  .pho-msg {
+    font-size: 14px;
+  }
+  .pbtn {
+    min-width: 66px;
   }
 }

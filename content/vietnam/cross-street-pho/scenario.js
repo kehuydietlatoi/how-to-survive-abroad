@@ -95,6 +95,7 @@ export default {
       onEnter: [
         { do: "teleport", spawn: "stool" },
         { do: "anim", id: "player", anim: "sit" },
+        { do: "interactable", id: "myStool", on: false },
         { do: "y", id: "player", y: 0.3 },
       ],
       prompt: { en: "**Ăn gì em?** (What would you like?)", vi: "**Ăn gì em?**" },
@@ -130,47 +131,24 @@ export default {
         en: "Street stalls specialise in one dish; the sign is the menu. Phở bò tái = rare beef, chín = well-done, gà = chicken.",
         vi: "Quán vỉa hè thường chỉ bán một món, biển hiệu chính là thực đơn. Phở bò tái / chín / phở gà.",
       },
-      next: "herbs",
+      next: "eat",
     },
     {
-      id: "herbs",
-      type: "choice",
-      icon: "🍜",
+      id: "eat",
+      type: "minigame",
+      game: "phoEating",
       onEnter: [{ do: "visible", id: "myBowl", on: true }],
-      prompt: {
-        en: "Your steaming bowl arrives with a plate of herbs, lime wedges, chili and garlic vinegar. What do you do?",
-        vi: "Bát phở nóng hổi được mang ra cùng đĩa rau thơm, chanh, ớt và dấm tỏi. Bạn làm gì?",
-      },
-      options: [
-        {
-          text: { en: "Taste the broth first, then add a little to your liking", vi: "Nếm nước dùng trước, rồi thêm gia vị vừa miệng" },
-          points: 10,
-          correct: true,
-          feedback: {
-            en: "That's how locals do it: the cook seasoned the broth for hours; you fine-tune it.",
-            vi: "Người địa phương cũng làm vậy: nước dùng đã được nêm kỹ, bạn chỉ chỉnh thêm cho hợp khẩu vị.",
-          },
-        },
-        {
-          text: { en: "Dump in all the chili at once", vi: "Cho hết ớt vào luôn" },
-          points: 3,
-          feedback: { en: "Brave! Vietnamese chili can be very hot. Start small.", vi: "Gan đấy! Ớt Việt Nam có thể rất cay. Cho ít thôi." },
-        },
-        {
-          text: { en: "Leave them, they look like decoration", vi: "Để đó, chắc chỉ để trang trí" },
-          points: 2,
-          feedback: { en: "They're free and part of the meal. Try them!", vi: "Rau và gia vị miễn phí, là một phần của bữa ăn. Thử đi!" },
-        },
-      ],
+      objective: { en: "Season your phở like a local, then eat it all!", vi: "Nêm phở như người Hà Nội, rồi ăn hết nhé!" },
       next: "callStaff",
     },
     {
       id: "callStaff",
+      onEnter: [{ do: "visible", id: "myBowl", on: false }],
       type: "choice",
       icon: "🙋",
       prompt: {
-        en: "You'd like more herbs. A young server is nearby. How do you call them?",
-        vi: "Bạn muốn thêm rau. Có một bạn phục vụ trẻ đứng gần đó. Bạn gọi thế nào?",
+        en: "You'd like another trà đá. A young server is nearby. How do you call them?",
+        vi: "Bạn muốn thêm một cốc trà đá. Có một bạn phục vụ trẻ đứng gần đó. Bạn gọi thế nào?",
       },
       options: [
         {

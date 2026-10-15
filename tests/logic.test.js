@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ScenarioRunner, validateScenario } from "../src/scenario/ScenarioRunner.js";
+import { ScenarioRunner, validateScenario, isAcceptable } from "../src/scenario/ScenarioRunner.js";
 import { CollisionWorld } from "../src/core/Collision.js";
 import { simulate, STRATEGIES } from "../src/minigames/crossingSim.js";
 import { t, setLang, getLang } from "../src/i18n/i18n.js";
@@ -15,7 +15,8 @@ const mini = {
       type: "choice",
       options: [
         { text: "good", points: 10, correct: true, set: { ok: true }, tip: "tipGood" },
-        { text: "bad", points: 0, set: { ok: false }, tip: "tipBad" },
+        { text: "meh", points: 5, set: { ok: false }, tip: "tipMeh" },
+        { text: "bad", points: 0, tip: "tipBad" },
       ],
       next: "d",
     },
@@ -48,10 +49,22 @@ test("runner branches on flags", () => {
   const r = new ScenarioRunner(mini);
   r.acknowledge();
   r.interact("door");
-  r.choose(1);
+  r.choose(1); // acceptable (5 points) but sets ok = false
   r.finishMinigame({ score: 0, passed: false });
   assert.equal(r.current().id, "sad");
   assert.equal(r.journal[0].good, false);
+});
+
+test("wrong choices must be retried; the first pick decides score and journal", () => {
+  const r = new ScenarioRunner(mini);
+  r.acknowledge();
+  r.interact("door");
+  assert.equal(isAcceptable(mini.steps[2].options[2]), false);
+  assert.throws(() => r.choose(2), /not acceptable/);
+  r.choose(0, 2); // first picked "bad", then the correct one
+  assert.equal(r.score, 0, "no points for a corrected wrong answer");
+  assert.equal(r.flags.ok, true, "flags come from the final pick");
+  assert.deepEqual(r.journal.at(-1), { tip: "tipBad", good: false });
 });
 
 test("validateScenario catches broken links", () => {

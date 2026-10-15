@@ -30,6 +30,7 @@ export class Game {
     this.scene.add(this.sun, this.sun.target);
 
     this.updaters = new Set();
+    this.view = null; // { scene, camera } override
     this.clock = new THREE.Clock();
     this.time = 0;
 
@@ -77,6 +78,8 @@ export class Game {
     this.time += dt;
     for (const fn of this.updaters) fn(dt, this.time);
     this._updateCamera(dt, false);
-    this.renderer.render(this.scene, this.camera);
+    // A minigame can take over the view with its own close-up scene.
+    const v = this.view;
+    this.renderer.render(v ? v.scene : this.scene, v ? v.camera : this.camera);
   }
 }
