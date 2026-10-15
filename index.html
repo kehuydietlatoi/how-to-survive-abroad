@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>How To Survive Abroad</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&display=swap&subset=vietnamese" rel="stylesheet" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="hud">
+      <div id="objective"></div>
+      <div class="hud-right">
+        <div id="score">⭐ 0</div>
+        <button id="routeBtn" class="chip" title="R">🗺️ <span data-t="route"></span></button>
+        <button id="langBtn" class="chip">EN</button>
+        <button id="menuBtn" class="chip" title="Esc">✕</button>
+      </div>
+      <div id="controlsHint"></div>
+    </div>
+
+    <div id="prompt"></div>
+    <div id="toast"></div>
+    <div id="dialog"></div>
+    <div id="minigame"></div>
+    <div id="fade"></div>
+    <div id="screen"></div>
+
+    <div id="touch">
+      <div class="stick"><div class="stick-knob"></div></div>
+      <div class="touch-buttons">
+        <button data-key="e" class="tbtn big">E</button>
+        <button data-key="run" class="tbtn" data-t="run"></button>
+        <button data-key="h" class="tbtn" data-t="hand"></button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
