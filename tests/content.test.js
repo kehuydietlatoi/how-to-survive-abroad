@@ -7,12 +7,31 @@ import deMap from "../content/germany/airport-to-home/map.js";
 import deScenario from "../content/germany/airport-to-home/scenario.js";
 import grabMap from "../content/vietnam/grab-ride/map.js";
 import grabScenario from "../content/vietnam/grab-ride/scenario.js";
+import trashMap from "../content/germany/trash/map.js";
+import trashScenario from "../content/germany/trash/scenario.js";
+import anmMap from "../content/germany/anmeldung/map.js";
+import anmScenario from "../content/germany/anmeldung/scenario.js";
+import shopMap from "../content/germany/supermarket/map.js";
+import shopScenario from "../content/germany/supermarket/scenario.js";
 
 const all = [
   ["vietnam", vnMap, vnScenario],
   ["germany", deMap, deScenario],
   ["grab ride", grabMap, grabScenario],
+  ["trash", trashMap, trashScenario],
+  ["anmeldung", anmMap, anmScenario],
+  ["supermarket", shopMap, shopScenario],
 ];
+
+// Sort-game data: every item must point at an existing zone.
+test("sort minigames reference existing zones", () => {
+  for (const [, , sc] of all)
+    for (const s of sc.steps.filter((x) => x.game === "sort")) {
+      const zones = new Set(s.params.zones.map((z) => z.id));
+      for (const it of s.params.items) for (const z of [].concat(it.zone)) assert.ok(zones.has(z), `${sc.id}: ${it.id} → ${z}`);
+      for (const z of zones) assert.ok(s.params.items.some((it) => [].concat(it.zone).includes(z)), `zone ${z} unused`);
+    }
+});
 
 // Every bilingual text object must have both languages.
 function findMissing(node, path, out) {
@@ -69,6 +88,6 @@ test("germany: the full route reaches the inspection and home", () => {
 });
 
 test("every choice step offers at least one acceptable answer", () => {
-  for (const sc of [vnScenario, deScenario, grabScenario])
+  for (const [, , sc] of all)
     for (const s of sc.steps.filter((x) => x.type === "choice")) assert.ok(s.options.some(isAcceptable), s.id);
 });

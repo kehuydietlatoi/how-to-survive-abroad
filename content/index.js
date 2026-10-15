@@ -3,6 +3,10 @@ import { StreetCrossing } from "../src/minigames/StreetCrossing.js";
 import { TicketMachine } from "../src/minigames/TicketMachine.js";
 import { PhoEating } from "../src/minigames/PhoEating.js";
 import { GrabRide } from "../src/minigames/GrabRide.js";
+import { SortGame } from "../src/minigames/SortGame.js";
+import { CallBoard } from "../src/minigames/CallBoard.js";
+import { PfandAutomat } from "../src/minigames/PfandAutomat.js";
+import { Checkout } from "../src/minigames/Checkout.js";
 
 export const SCENARIOS = [
   {
@@ -57,6 +61,60 @@ export const SCENARIOS = [
     load: async () => {
       const [map, scenario] = await Promise.all([import("./vietnam/grab-ride/map.js"), import("./vietnam/grab-ride/scenario.js")]);
       return { map: map.default, scenario: scenario.default, minigames: { grabRide: GrabRide } };
+    },
+  },
+  {
+    id: "germany-trash",
+    country: "germany",
+    flag: "🇩🇪",
+    emoji: "🗑️",
+    color: "linear-gradient(135deg,#fff3b0,#b8e0ff)",
+    minutes: 4,
+    title: { en: "Mülltrennung: sort your trash", vi: "Mülltrennung: phân loại rác" },
+    desc: {
+      en: "Yellow, blue, brown or grey? Sort tricky trash, learn glass-bank hours and what to do with Pfand bottles.",
+      vi: "Vàng, xanh, nâu hay xám? Phân loại rác “khó nhằn”, học giờ bỏ thùng kính và cách xử lý chai Pfand.",
+    },
+    tags: [{ en: "Home", vi: "Ở nhà" }, { en: "Neighbours", vi: "Hàng xóm" }],
+    load: async () => {
+      const [map, scenario] = await Promise.all([import("./germany/trash/map.js"), import("./germany/trash/scenario.js")]);
+      return { map: map.default, scenario: scenario.default, minigames: { sort: SortGame } };
+    },
+  },
+  {
+    id: "germany-anmeldung",
+    country: "germany",
+    flag: "🇩🇪",
+    emoji: "🏛️",
+    color: "linear-gradient(135deg,#d6e4ff,#ffe3ee)",
+    minutes: 5,
+    title: { en: "Anmeldung at the Bürgeramt", vi: "Đăng ký cư trú ở Bürgeramt" },
+    desc: {
+      en: "Book the free appointment, pack the right documents, catch your number on the call board and get your Meldebescheinigung.",
+      vi: "Đặt lịch miễn phí, chuẩn bị đúng giấy tờ, canh số trên bảng gọi và nhận Meldebescheinigung.",
+    },
+    tags: [{ en: "Paperwork", vi: "Giấy tờ" }, { en: "First weeks", vi: "Tuần đầu" }],
+    load: async () => {
+      const [map, scenario] = await Promise.all([import("./germany/anmeldung/map.js"), import("./germany/anmeldung/scenario.js")]);
+      return { map: map.default, scenario: scenario.default, minigames: { sort: SortGame, callBoard: CallBoard } };
+    },
+  },
+  {
+    id: "germany-supermarket",
+    country: "germany",
+    flag: "🇩🇪",
+    emoji: "🛒",
+    color: "linear-gradient(135deg,#ffd6d6,#c9f2d8)",
+    minutes: 6,
+    title: { en: "Saturday at the supermarket", vi: "Thứ Bảy đi siêu thị" },
+    desc: {
+      en: "Sunday closing, the €1 cart lock, the Pfand bottle machine and the legendary German checkout speed.",
+      vi: "Chủ nhật đóng cửa, khoá xe đẩy 1 €, máy trả vỏ chai Pfand và tốc độ quét hàng “huyền thoại” của Đức.",
+    },
+    tags: [{ en: "Shopping", vi: "Mua sắm" }, { en: "Pfand", vi: "Tiền cọc chai" }],
+    load: async () => {
+      const [map, scenario] = await Promise.all([import("./germany/supermarket/map.js"), import("./germany/supermarket/scenario.js")]);
+      return { map: map.default, scenario: scenario.default, minigames: { pfand: PfandAutomat, checkout: Checkout } };
     },
   },
 ];

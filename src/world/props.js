@@ -477,6 +477,162 @@ export function templeGate() {
   return withCollider(g, 10, 1.6);
 }
 
+/** German wheelie bin with a coloured lid. */
+export function wheelieBin(color = "#4b5563", label = "") {
+  const g = new THREE.Group();
+  g.add(box(0.75, 1.0, 0.8, "#3d4451", 0, 0.08, 0, 0.08));
+  g.add(box(0.8, 0.12, 0.88, color, 0, 1.08, 0, 0.05));
+  g.add(box(0.77, 0.18, 0.06, color, 0, 0.85, 0.4, 0.03));
+  for (const x of [-0.3, 0.3]) {
+    const w = mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 12), toon("#222"), x, 0.1, -0.35);
+    w.rotation.z = Math.PI / 2;
+    g.add(w);
+  }
+  if (label) {
+    const s = signBoard([label], { w: 0.6, h: 0.22, color: "#ffffff", fg: "#333", depth: 0.01 });
+    s.position.set(0, 0.45, 0.41);
+    g.add(s);
+  }
+  return withCollider(g, 0.8, 0.85);
+}
+
+/** Street glass bank (Altglascontainer). */
+export function glassContainer(color = "#2f9e44", label = "Grünglas") {
+  const g = new THREE.Group();
+  g.add(box(1.4, 1.6, 1.4, color, 0, 0, 0, 0.25));
+  g.add(cyl(0.18, 0.18, 0.06, "#1f2937", 0, 1.6, 0));
+  for (const x of [-0.35, 0.35]) {
+    const hole = mesh(new THREE.CircleGeometry(0.13, 16), toon("#111"), x, 1.25, 0.705);
+    g.add(hole);
+  }
+  const s = signBoard([label], { w: 1.2, h: 0.3, color: "#ffffff", fg: "#222", depth: 0.01 });
+  s.position.set(0, 0.6, 0.71);
+  g.add(s);
+  return withCollider(g, 1.4, 1.4);
+}
+
+/** Simple shop / office facade with a big sign; front faces +z. */
+export function building(w = 16, h = 7, d = 10, color = "#f3efe6", sign = "", signColor = "#1f5fbf") {
+  const g = new THREE.Group();
+  g.add(box(w, h, d, color, 0, 0, 0, 0.15));
+  g.add(box(w - 1, 0.3, d + 0.2, "#d9d2c3", 0, h - 0.3, 0, 0.05));
+  for (let x = -w / 2 + 2; x < w / 2 - 1; x += 3) g.add(box(1.8, 1.4, 0.12, "#8fb4d9", x, h - 2.6, d / 2, 0.05));
+  if (sign) {
+    const s = signBoard([sign], { w: Math.min(w - 2, 8), h: 1, color: signColor, fg: "#ffffff" });
+    s.position.set(0, h - 1.2, d / 2 + 0.05);
+    g.add(s);
+  }
+  return withCollider(g, w, d);
+}
+
+/** Supermarket shelf (gondola) filled with colourful goods. */
+export function shelf(len = 6, seed = 1) {
+  const g = new THREE.Group();
+  g.add(box(len, 1.9, 0.9, "#e5e7eb", 0, 0, 0, 0.04));
+  const colors = ["#e63946", "#f4a261", "#2a9d8f", "#e9c46a", "#8ecae6", "#b5838d", "#90be6d", "#ffb703"];
+  let k = seed;
+  for (let row = 0; row < 3; row++) {
+    for (let x = -len / 2 + 0.3; x < len / 2 - 0.2; x += 0.42) {
+      k = (k * 9301 + 49297) % 233280;
+      const c = colors[k % colors.length];
+      const h = 0.28 + (k % 5) * 0.04;
+      for (const side of [-1, 1]) g.add(box(0.34, h, 0.3, c, x, 0.25 + row * 0.55, side * 0.32, 0.03));
+    }
+  }
+  return withCollider(g, len, 0.95);
+}
+
+/** Supermarket checkout: belt, scanner, cashier booth. Customer side is +z. */
+export function checkoutCounter() {
+  const g = new THREE.Group();
+  g.add(box(4.5, 0.85, 0.9, "#9aa0ad", 0, 0, 0, 0.05));
+  g.add(box(3.2, 0.04, 0.6, "#2b2b2b", -0.6, 0.85, 0, 0.01)); // belt
+  g.add(box(0.5, 0.25, 0.5, "#1f5fbf", 1.2, 0.85, 0, 0.04)); // scanner
+  g.add(box(1.0, 1.2, 1.0, "#d9d2c3", 1.4, 0, -1.0, 0.05)); // booth
+  return withCollider(g, 4.5, 1.0);
+}
+
+/** Bottle return machine (Pfandautomat) in a wall. */
+export function pfandAutomat() {
+  const g = new THREE.Group();
+  g.add(box(1.4, 2.2, 0.6, "#e8ecef", 0, 0, 0, 0.08));
+  g.add(cyl(0.16, 0.16, 0.08, "#222", 0, 1.1, 0.28));
+  g.children[1].rotation.x = Math.PI / 2;
+  g.children[1].position.set(0, 1.2, 0.3);
+  g.add(box(0.6, 0.35, 0.05, "#7ec8ff", 0, 1.65, 0.3, 0.03));
+  g.add(box(0.2, 0.2, 0.05, "#2fa84f", 0.45, 0.9, 0.3, 0.05));
+  const s = signBoard(["♻ Leergut · Pfand"], { w: 1.3, h: 0.3, color: "#2fa84f", fg: "#fff" });
+  s.position.set(0, 2.0, 0.31);
+  g.add(s);
+  return withCollider(g, 1.4, 0.6);
+}
+
+/** Row of shopping carts. */
+export function cartRow(n = 4) {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const c = new THREE.Group();
+    c.add(box(0.6, 0.45, 0.9, "#b8c1cc", 0, 0.45, 0, 0.03));
+    c.children[0].material = toon("#b8c1cc", { opacity: 0.7 });
+    c.add(box(0.62, 0.05, 0.05, "#e63946", 0, 1.0, -0.48, 0.02));
+    for (const [x, z] of [[-0.25, -0.35], [0.25, -0.35], [-0.25, 0.35], [0.25, 0.35]]) c.add(cyl(0.06, 0.06, 0.05, "#333", x, 0.0, z));
+    c.position.z = i * 0.35;
+    g.add(c);
+  }
+  return withCollider(g, 0.7, 0.9 + (n - 1) * 0.35, 0, ((n - 1) * 0.35) / 2);
+}
+
+/** Waiting-number display board (LED style). */
+export function numberBoard(lines = ["A-112 → Platz 3", "A-113 → Platz 1"]) {
+  const g = new THREE.Group();
+  const s = signBoard(
+    lines.map((l) => ({ text: l, color: "#ffb000", size: 70 })),
+    { w: 3, h: 1.4, color: "#111827", fg: "#ffb000", px: 320 }
+  );
+  s.position.y = 2.4;
+  g.add(s);
+  g.add(box(0.1, 2.4, 0.1, "#6b7280", -1.2));
+  g.add(box(0.1, 2.4, 0.1, "#6b7280", 1.2));
+  return withCollider(g, 2.8, 0.3);
+}
+
+/** Office service counter with a number sign. */
+export function serviceCounter(n = 1) {
+  const g = new THREE.Group();
+  g.add(box(2.2, 1.05, 0.8, "#c9a27a", 0, 0, 0, 0.06));
+  g.add(box(2.3, 0.06, 0.9, "#f3efe6", 0, 1.05, 0, 0.02));
+  g.add(box(0.5, 0.35, 0.05, "#111827", 0.6, 1.11, -0.2, 0.02)); // monitor
+  const s = signBoard([`Platz ${n}`], { w: 1.2, h: 0.45, color: "#1f5fbf", fg: "#fff" });
+  s.position.set(0, 2.6, -0.2);
+  g.add(s);
+  g.add(box(0.06, 1.5, 0.06, "#6b7280", 0, 1.1, -0.2));
+  return withCollider(g, 2.2, 0.8);
+}
+
+/** Row of waiting-room chairs. */
+export function chairs(n = 4, color = "#4da3ff") {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const x = (i - (n - 1) / 2) * 0.7;
+    g.add(box(0.6, 0.08, 0.55, color, x, 0.45, 0, 0.03));
+    g.add(box(0.6, 0.55, 0.06, color, x, 0.5, -0.25, 0.03));
+  }
+  g.add(box(n * 0.7, 0.06, 0.1, "#6b7280", 0, 0.38, 0, 0.02));
+  return withCollider(g, n * 0.7, 0.6);
+}
+
+/** Small ticket terminal (Wartenummer). */
+export function ticketTerminal() {
+  const g = new THREE.Group();
+  g.add(box(0.6, 1.4, 0.45, "#1f5fbf", 0, 0, 0, 0.08));
+  g.add(box(0.45, 0.32, 0.05, "#7ec8ff", 0, 1.0, 0.23, 0.03));
+  g.add(box(0.3, 0.05, 0.05, "#222", 0, 0.7, 0.23, 0.01));
+  const s = signBoard(["Wartenummer"], { w: 0.9, h: 0.25, color: "#ffffff", fg: "#1f5fbf" });
+  s.position.set(0, 1.5, 0);
+  g.add(s);
+  return withCollider(g, 0.6, 0.45);
+}
+
 /** Solid wall / block with collision. */
 export function wall(w, d, h, color, opacity = 1) {
   const g = new THREE.Group();
@@ -553,4 +709,15 @@ export const PROPS = {
   grabHelmet,
   trafficLight,
   templeGate,
+  wheelieBin,
+  glassContainer,
+  building,
+  shelf,
+  checkoutCounter,
+  pfandAutomat,
+  cartRow,
+  numberBoard,
+  serviceCounter,
+  chairs,
+  ticketTerminal,
 };
