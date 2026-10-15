@@ -35,6 +35,10 @@ const ui = {
     en: "Hold W / ↑ to walk steadily · Shift = run · H = raise hand",
     vi: "Giữ W / ↑ để đi đều · Shift = chạy · H = giơ tay",
   },
+  crossHintTouch: {
+    en: "Push the stick up to walk steadily · Run / Hand buttons",
+    vi: "Đẩy cần điều khiển lên để đi đều · Nút Chạy / Giơ tay",
+  },
   crossDone: { en: "You made it across!", vi: "Bạn đã qua đường!" },
   crossFail: { en: "Too many bumps… try again calmly.", vi: "Va chạm nhiều quá… bình tĩnh thử lại nhé." },
   walk: { en: "Walk", vi: "Đi" },

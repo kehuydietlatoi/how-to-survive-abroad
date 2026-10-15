@@ -209,6 +209,10 @@ export class World {
 
   /** Fade objects that sit between the camera and the player (cutaway view). */
   updateOccluders(dt, camera, target) {
+    // Floating labels only for things nearby (they draw on top of walls).
+    for (const it of this.interactables) {
+      if (it.tagSprite) it.tagSprite.visible = Math.hypot(it.p[0] - target.x, it.p[1] - target.z) < 16;
+    }
     if (!this.occluders.length) return;
     const from = camera.position;
     const dir = this._hit.copy(target).sub(from);

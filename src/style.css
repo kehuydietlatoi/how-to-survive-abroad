@@ -25,7 +25,7 @@ body {
   color: var(--ink);
   -webkit-user-select: none;
   user-select: none;
-  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #game {
@@ -34,6 +34,21 @@ body {
   width: 100%;
   height: 100%;
   display: block;
+  touch-action: none; /* only the 3D view swallows gestures; menus and panels can scroll */
+}
+
+/* stacking order of the overlays */
+#hud { z-index: 2; }
+#touch { position: relative; z-index: 3; }
+#prompt { z-index: 4; }
+#minigame { z-index: 5; }
+#dialog { z-index: 6; }
+#toast { z-index: 7; }
+#fade { z-index: 8; }
+#screen { z-index: 9; }
+
+button {
+  touch-action: manipulation;
 }
 
 button {
@@ -162,6 +177,10 @@ button {
   transition: all 0.2s;
   pointer-events: none;
   cursor: pointer;
+  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 #prompt .key {
   background: var(--accent);
@@ -767,6 +786,15 @@ button {
 #touch.show {
   display: block;
 }
+/* Touch controls get out of the way while a dialog or an HTML minigame is open. */
+body.dialog-open #touch,
+body.mg-ui #touch {
+  display: none;
+}
+.stick,
+.tbtn {
+  touch-action: none;
+}
 .stick {
   position: fixed;
   left: 24px;
@@ -789,11 +817,16 @@ button {
 }
 .touch-buttons {
   position: fixed;
-  right: 20px;
+  right: 16px;
   bottom: 24px;
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.touch-buttons .big {
+  grid-row: 1 / span 2;
 }
 .tbtn {
   width: 62px;
@@ -819,18 +852,95 @@ button {
 @media (max-width: 600px) {
   #objective {
     max-width: calc(100vw - 32px);
-    top: 64px;
+    top: 60px;
     font-size: 15px;
+    padding: 8px 12px;
+  }
+  .hud-right {
+    top: 12px;
+    right: 12px;
+    gap: 6px;
   }
   .text {
-    font-size: 17px;
+    font-size: 16px;
   }
   #controlsHint {
     display: none;
   }
-  #prompt {
-    bottom: 130px;
+  #dialog {
+    padding: 10px;
   }
+  #dialog .panel {
+    padding: 14px 14px 12px;
+    max-height: 62vh;
+    max-height: 62dvh;
+  }
+  .btn {
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+  .btn.primary {
+    float: none;
+    display: block;
+    width: 100%;
+  }
+  .btn.option {
+    padding: 10px 12px;
+  }
+  .feedback {
+    font-size: 15px;
+  }
+  .tvm-wrap {
+    align-items: flex-start;
+    align-content: flex-start;
+    padding: 70px 10px 20px;
+  }
+  .tvm .screen {
+    min-height: 0;
+  }
+  .helper {
+    font-size: 15px;
+  }
+  .mg-hud {
+    top: 120px;
+    padding: 6px 12px;
+  }
+  #toast {
+    top: auto;
+    bottom: 200px;
+  }
+  .result {
+    margin: 10px auto;
+    padding: 16px;
+  }
+}
+
+/* On touch screens the interact prompt sits above the touch buttons. */
+body.touch #prompt {
+  bottom: 170px;
+}
+@media (max-width: 600px) {
+  .stick {
+    left: 16px;
+    width: 116px;
+    height: 116px;
+  }
+  .stick-knob {
+    left: 33px;
+    top: 33px;
+  }
+  .tbtn {
+    width: 54px;
+    height: 54px;
+    font-size: 13px;
+  }
+  .tbtn.big {
+    width: 76px;
+    height: 76px;
+  }
+}
+body.touch #controlsHint {
+  display: none;
 }
 
 .pop {

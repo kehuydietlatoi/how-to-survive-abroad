@@ -102,6 +102,7 @@ export const TicketMachine = {
     return new Promise((resolve) => {
       const root = document.getElementById("minigame");
       root.className = "show";
+      document.body.classList.add("mg-ui");
       let mlang = "de"; // machine language
       const state = { ticket: null, adult: null, paid: 0, rejected50: false, sawDT: false, used: new Set(), card: false };
       const L = (de, en) => (mlang === "de" ? de : en);
@@ -110,7 +111,7 @@ export const TicketMachine = {
         const tvm = (body) => `
           <div class="tvm-wrap">
             <div class="tvm pop">
-              <div class="top"><span>DB · Fahrkarten</span><span>${mlang === "de" ? "🇩🇪 DE" : "🇬🇧 EN"}</span></div>
+              <div class="top"><span>DB · Fahrkarten</span><span>${mlang === "de" ? "DE" : "EN"}</span></div>
               <div class="screen">${body}${msg ? `<div class="msg ${bad ? "bad" : ""}">${msg}</div>` : ""}</div>
               <div class="slot"></div>
             </div>
@@ -121,8 +122,8 @@ export const TicketMachine = {
           body = `<h4>Willkommen! · Welcome!</h4>
             <p>Bitte wählen Sie eine Sprache.</p>
             <div class="tbtns">
-              <button class="tbtn2" data-lang="de"><span>🇩🇪 Deutsch</span></button>
-              <button class="tbtn2" data-lang="en"><span>🇬🇧 English</span></button>
+              <button class="tbtn2" data-lang="de"><span>Deutsch</span></button>
+              <button class="tbtn2" data-lang="en"><span>English</span></button>
             </div>`;
         } else if (screen === "ticket" || screen === "dt") {
           body = `<h4>${L("Fahrkarte wählen", "Choose ticket")}</h4>
@@ -236,6 +237,7 @@ export const TicketMachine = {
 
       const finish = () => {
         sfx.good();
+        document.body.classList.remove("mg-ui");
         root.className = "";
         root.innerHTML = "";
         const tk = state.ticket;

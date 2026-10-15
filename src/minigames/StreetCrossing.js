@@ -4,6 +4,7 @@ import { motorbike } from "../world/props.js";
 import { Character } from "../world/Character.js";
 import { sfx } from "../core/Audio.js";
 import { t } from "../i18n/i18n.js";
+import { isTouch } from "../ui/ui.js";
 
 // 3D view + controls for the street-crossing minigame. Traffic runs all the time
 // ("ambient"); the minigame puts the player into the simulation.
@@ -100,7 +101,7 @@ class Crossing {
     this.input_ = { forward: 0, run: false, hand: false };
     this.hud = document.getElementById("minigame");
     this.hud.className = "show";
-    this.hud.innerHTML = `<div class="mg-hud"><div class="hearts"></div><div class="hint">${t("crossHint")}</div></div>`;
+    this.hud.innerHTML = `<div class="mg-hud"><div class="hearts"></div><div class="hint">${t(isTouch ? "crossHintTouch" : "crossHint")}</div></div>`;
     this.heartsEl = this.hud.querySelector(".hearts");
     this.flash = 0;
     this.sim.beginCrossing();

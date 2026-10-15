@@ -33,10 +33,12 @@ function openDialog(build) {
   root.appendChild(panel);
   root.classList.add("show");
   dialogOpen = true;
+  document.body.classList.add("dialog-open");
   return new Promise((resolve) => {
     build(panel, (value) => {
       root.classList.remove("show");
       dialogOpen = false;
+      document.body.classList.remove("dialog-open");
       setTimeout(() => {
         if (!dialogOpen) root.innerHTML = "";
       }, 200);
@@ -52,7 +54,7 @@ function header(panel, speaker, icon) {
 }
 
 function continueButton(panel, close, label = "continue") {
-  const b = el("button", "btn primary", esc(t(label)) + ' <span class="key">E</span>');
+  const b = el("button", "btn primary", esc(t(label)) + (isTouch ? "" : ' <span class="key">E</span>'));
   b.onclick = () => close();
   panel.appendChild(b);
   setTimeout(() => b.focus(), 50);
@@ -151,7 +153,7 @@ export function setPrompt(label, onClick) {
     p.onclick = null;
     return;
   }
-  p.innerHTML = `<span class="key">E</span> ${esc(label)}`;
+  p.innerHTML = isTouch ? `👆 ${esc(label)}` : `<span class="key">E</span> ${esc(label)}`;
   p.onclick = onClick;
   p.classList.add("show");
 }
@@ -179,7 +181,14 @@ export function hideScreen() {
   s.innerHTML = "";
 }
 
+/** Touch screen? (?touch=1 forces it, handy for testing on desktop) */
+export const isTouch =
+  new URLSearchParams(location.search).get("touch") === "1" ||
+  matchMedia("(pointer: coarse)").matches ||
+  navigator.maxTouchPoints > 0;
+document.body.classList.toggle("touch", isTouch);
+
 export function setHudVisible(v) {
   $("#hud").classList.toggle("show", v);
-  $("#touch").classList.toggle("show", v && matchMedia("(pointer: coarse)").matches);
+  $("#touch").classList.toggle("show", v && isTouch);
 }
