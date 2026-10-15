@@ -112,6 +112,7 @@ export class World {
     } else if (item.npc) {
       const c = await Character.create(item.npc);
       c.play(item.anim || "idle");
+      if (item.helmet) c.addHelmet();
       c.mixer.setTime(Math.random() * 2);
       obj = c.root;
       this.npcs.push(c);

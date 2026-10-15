@@ -5,10 +5,13 @@ import vnMap from "../content/vietnam/cross-street-pho/map.js";
 import vnScenario from "../content/vietnam/cross-street-pho/scenario.js";
 import deMap from "../content/germany/airport-to-home/map.js";
 import deScenario from "../content/germany/airport-to-home/scenario.js";
+import grabMap from "../content/vietnam/grab-ride/map.js";
+import grabScenario from "../content/vietnam/grab-ride/scenario.js";
 
 const all = [
   ["vietnam", vnMap, vnScenario],
   ["germany", deMap, deScenario],
+  ["grab ride", grabMap, grabScenario],
 ];
 
 // Every bilingual text object must have both languages.
@@ -66,6 +69,6 @@ test("germany: the full route reaches the inspection and home", () => {
 });
 
 test("every choice step offers at least one acceptable answer", () => {
-  for (const sc of [vnScenario, deScenario])
+  for (const sc of [vnScenario, deScenario, grabScenario])
     for (const s of sc.steps.filter((x) => x.type === "choice")) assert.ok(s.options.some(isAcceptable), s.id);
 });

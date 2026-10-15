@@ -26,7 +26,7 @@ export function box(w, h, d, color, x = 0, y = 0, z = 0, r = 0.06) {
   return mesh(rbox(w, h, d, r), toon(color), x, y + h / 2, z);
 }
 
-function cyl(rt, rb, h, color, x = 0, y = 0, z = 0, seg = 16) {
+export function cyl(rt, rb, h, color, x = 0, y = 0, z = 0, seg = 16) {
   return mesh(new THREE.CylinderGeometry(rt, rb, h, seg), toon(color), x, y + h / 2, z);
 }
 
@@ -427,6 +427,56 @@ export function slab(w, d, h, color) {
   return g;
 }
 
+/** Cheap shopfront for long streets (few meshes). Front faces +z. */
+export function shopFront(color = "#ffd166", floors = 3, w = 4.4, sign = null) {
+  const g = new THREE.Group();
+  const h = floors * 3;
+  g.add(box(w, h, 5, color, 0, 0, 0, 0.08));
+  g.add(box(w - 0.6, h - 3.4, 0.12, "#6b8fb3", 0, 3.2, 2.5, 0.04)); // window band
+  g.add(box(w, 0.08, 1.4, ["#3fa34d", "#e63946", "#2e86de", "#f4a261"][(w * 10 + floors) % 4 | 0], 0, 2.6, 3.1, 0.02)); // awning
+  if (sign) {
+    const sb = signBoard([sign], { w: w - 0.8, h: 0.5, color: "#fff4d6", fg: "#c1121f" });
+    sb.position.set(0, 2.0, 2.56);
+    g.add(sb);
+  }
+  return g;
+}
+
+/** Green Grab-style half helmet (sits on a Kenney character head). */
+export function grabHelmet() {
+  const g = new THREE.Group();
+  const shell = mesh(new THREE.SphereGeometry(0.36, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon("#00b14f"));
+  g.add(shell);
+  g.add(box(0.5, 0.05, 0.2, "#00b14f", 0, 0, 0.3, 0.02)); // visor
+  return g;
+}
+
+export function trafficLight(state = "red") {
+  const g = new THREE.Group();
+  g.add(cyl(0.08, 0.1, 3.4, "#4b5563"));
+  g.add(box(0.4, 1.0, 0.3, "#222", 0, 2.8, 0, 0.06));
+  const colors = { red: ["#ff3b30", "#442222", "#224422"], green: ["#442222", "#443b22", "#34c759"] }[state] || [];
+  ["#ff3b30", "#ffcc00", "#34c759"].forEach((c, i) => {
+    const on = colors[i] === c;
+    g.add(mesh(new THREE.SphereGeometry(0.11, 12, 8), toon(on ? c : "#333", { emissive: on ? c : "#000" }), 0, 3.6 - i * 0.3, 0.16));
+  });
+  return withCollider(g, 0.3, 0.3);
+}
+
+/** Văn Miếu (Temple of Literature) style gate: red pillars, tiled roofs. */
+export function templeGate() {
+  const g = new THREE.Group();
+  for (const x of [-4, -1.4, 1.4, 4]) g.add(box(0.7, 5, 0.7, "#b23a2b", x, 0, 0, 0.08));
+  g.add(box(10, 0.6, 1.6, "#7a2a1f", 0, 5, 0, 0.1));
+  g.add(box(11, 0.5, 2.2, "#3d4a5c", 0, 5.6, 0, 0.2)); // roof
+  g.add(box(3.4, 0.5, 2.2, "#3d4a5c", 0, 6.4, 0, 0.2));
+  g.add(box(2.6, 1.0, 0.8, "#7a2a1f", 0, 6.1, 0, 0.1));
+  const sb = signBoard(["Văn Miếu"], { w: 2.4, h: 0.6, color: "#1d3557", fg: "#ffd60a" });
+  sb.position.set(0, 4.3, 0.4);
+  g.add(sb);
+  return withCollider(g, 10, 1.6);
+}
+
 /** Solid wall / block with collision. */
 export function wall(w, d, h, color, opacity = 1) {
   const g = new THREE.Group();
@@ -499,4 +549,8 @@ export const PROPS = {
   wall,
   track,
   trainInterior,
+  shopFront,
+  grabHelmet,
+  trafficLight,
+  templeGate,
 };

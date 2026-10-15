@@ -121,6 +121,8 @@ export class ScenarioScene {
     if (jump && this.runner.stepsById.has(jump)) {
       this.runner.currentId = jump;
       Object.assign(this.runner.flags, { stamped: true, ticketValid: true });
+      const spawnStep = this.def.scenario.steps.find((s) => s.id === jump);
+      if (spawnStep?.spawn) this.teleport(this.def.map.spawns[spawnStep.spawn]);
     }
     while (!this.disposed) {
       const step = this.runner.current();

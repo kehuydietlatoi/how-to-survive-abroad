@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { instance } from "../core/Assets.js";
+import { grabHelmet } from "./props.js";
 
 /** A Kenney mini character with crossfaded animations. */
 export class Character {
@@ -31,6 +32,23 @@ export class Character {
     next.play();
     if (this.current) this.current.crossFadeTo(next, fade, false);
     this.current = next;
+  }
+
+  /** Put a green Grab-style helmet on the head bone. */
+  addHelmet() {
+    const head = this.model.getObjectByName("head") || this.model.getObjectByName("Head");
+    const helmet = grabHelmet();
+    if (head) {
+      const kit = this.model.scale.x || 1;
+      helmet.scale.setScalar(0.5 / 0.36 / kit);
+      helmet.position.set(0, 0.3, 0.01);
+      head.add(helmet);
+    } else {
+      helmet.scale.setScalar(0.62 / 0.36);
+      helmet.position.set(0, 1.55, 0);
+      this.root.add(helmet);
+    }
+    return helmet;
   }
 
   update(dt) {

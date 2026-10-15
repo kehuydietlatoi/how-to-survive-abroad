@@ -1108,3 +1108,163 @@ body.mg-ui #controlsHint {
     min-width: 66px;
   }
 }
+
+/* ---------- Grab ride minigame ---------- */
+.ride-top {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 24px));
+  background: var(--paper);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 8px 14px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font-weight: 800;
+}
+.ride-progress {
+  position: relative;
+  height: 12px;
+  background: #eee4f5;
+  border-radius: 999px;
+}
+.ride-progress div {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: #00b14f;
+}
+.ride-progress span {
+  position: absolute;
+  right: -6px;
+  top: -9px;
+  font-size: 16px;
+}
+.ride-mood .mood {
+  font-size: 22px;
+}
+.ride-cue {
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  transform: translate(-50%, -10px) scale(0.9);
+  opacity: 0;
+  background: #fff;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 22px;
+  box-shadow: var(--shadow);
+  transition: opacity 0.15s, transform 0.15s;
+  white-space: nowrap;
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.ride-cue .ic {
+  font-size: 30px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.ride-cue.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+.ride-cue.soon {
+  opacity: 0.8;
+}
+.ride-cue.now {
+  background: #fff3b0;
+  animation: pulse-cue 0.35s infinite alternate;
+}
+.ride-cue.doing {
+  background: #c9f2d8;
+  animation: none;
+}
+@keyframes pulse-cue {
+  to { transform: translate(-50%, 0) scale(1.06); }
+}
+.ride-fb {
+  position: absolute;
+  top: calc(26% + 70px);
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 6px 16px;
+  border-radius: 14px;
+  font-weight: 700;
+  color: #fff;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.ride-fb.show { opacity: 1; }
+.ride-fb.good { background: var(--good); }
+.ride-fb.bad { background: var(--bad); }
+.ride-pad {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.ride-pad > div {
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+.rbtn {
+  width: 78px;
+  height: 78px;
+  border-radius: 22px;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 5px 0 rgba(59, 51, 85, 0.25);
+  font-size: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.rbtn small {
+  font-size: 12px;
+  font-weight: 800;
+}
+.rbtn.want {
+  box-shadow: 0 0 0 4px #ffcc33, 0 5px 0 rgba(59, 51, 85, 0.25);
+}
+.rbtn.down {
+  transform: translateY(3px);
+  background: #c9f2d8;
+}
+.ride-keys {
+  position: absolute;
+  bottom: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 2px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .ride-top {
+    grid-template-columns: 1fr auto;
+    font-size: 14px;
+  }
+  .ride-title { grid-column: 1 / -1; }
+  .ride-cue { font-size: 17px; top: 22%; }
+  .ride-cue .ic { font-size: 24px; }
+  .rbtn { width: 68px; height: 68px; font-size: 26px; }
+}

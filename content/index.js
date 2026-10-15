@@ -2,6 +2,7 @@
 import { StreetCrossing } from "../src/minigames/StreetCrossing.js";
 import { TicketMachine } from "../src/minigames/TicketMachine.js";
 import { PhoEating } from "../src/minigames/PhoEating.js";
+import { GrabRide } from "../src/minigames/GrabRide.js";
 
 export const SCENARIOS = [
   {
@@ -38,6 +39,24 @@ export const SCENARIOS = [
     load: async () => {
       const [map, scenario] = await Promise.all([import("./vietnam/cross-street-pho/map.js"), import("./vietnam/cross-street-pho/scenario.js")]);
       return { map: map.default, scenario: scenario.default, minigames: { streetCrossing: StreetCrossing, phoEating: PhoEating }, minigameParams: { streetCrossing: { crossX: 0, roadZ: 0 } } };
+    },
+  },
+  {
+    id: "vietnam-grab-ride",
+    country: "vietnam",
+    flag: "🇻🇳",
+    emoji: "🛵",
+    color: "linear-gradient(135deg,#b8f2c9,#ffe29a)",
+    minutes: 5,
+    title: { en: "Your first Grab bike ride", vi: "Chuyến Grab bike đầu tiên" },
+    desc: {
+      en: "Dodge an overpriced xe ôm, find the right driver, wear the helmet properly and ride pillion through Hanoi traffic to Văn Miếu.",
+      vi: "Tránh xe ôm “chặt chém”, tìm đúng tài xế, đội mũ đúng cách và ngồi sau xe máy băng qua phố Hà Nội tới Văn Miếu.",
+    },
+    tags: [{ en: "Transport", vi: "Đi lại" }, { en: "Safety", vi: "An toàn" }],
+    load: async () => {
+      const [map, scenario] = await Promise.all([import("./vietnam/grab-ride/map.js"), import("./vietnam/grab-ride/scenario.js")]);
+      return { map: map.default, scenario: scenario.default, minigames: { grabRide: GrabRide } };
     },
   },
 ];

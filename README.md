@@ -15,7 +15,10 @@ All text is available in **English and Vietnamese** (toggle on the menu or with 
 ## Scenarios
 
 - 🇩🇪 **Germany: from the airport to your new home**: info desk → ticket machine (language, fare zone, adult/child, a €50 note the machine refuses) → stamp the ticket → pick the right S8 direction from the departure board → ticket inspection (€60 fine if invalid/unstamped) → find bus 34 → board → press STOP → find Lindenstraße 12.
-- 🇻🇳 **Vietnam: cross the street & eat phở**: walk the Old Quarter sidewalk → choose how to cross → **street-crossing mini-game** → sit at the phở stall → order, use the herbs, call "Em ơi!", pay after eating, judge a fair price.
+- 🇻🇳 **Vietnam: cross the street & eat phở**: walk the Old Quarter sidewalk → choose how to cross → **street-crossing mini-game** → sit at the phở stall → order → **phở eating mini-game** (taste, season with lime/chili/vinegar/herbs/quẩy, eat with chopsticks & spoon, trà đá when too spicy) → call "Em ơi!", pay after eating, judge a fair price.
+- 🇻🇳 **Vietnam: your first Grab bike ride**: turn down an overpriced street xe ôm → book GrabBike → find your driver among look-alike plates → fasten the helmet → get on from the left (hot exhaust!) → **3D passenger ride mini-game** through Hanoi traffic (lean with the driver, hold on when braking, knees in through tight gaps) → get off, pay, rate.
+
+Wrong answers in choices must be re-picked until an acceptable one is chosen; the score and journal keep the first pick.
 
 The street-crossing traffic is a small simulation: riders steer around where they **predict** you will be, so walking slowly and steadily is safe, while sprinting, stopping suddenly or stepping back causes bumps. `node scripts/tune-crossing.mjs` prints the balance (steady ≈ 99, sprint ≈ 80, stop ≈ 83, step back ≈ 52 average score).
 
