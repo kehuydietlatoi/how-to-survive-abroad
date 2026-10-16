@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { instance, preload, toon } from "../core/Assets.js";
 import { CollisionWorld } from "../core/Collision.js";
 import { PROPS, ground } from "./props.js";
+import { WORLD_PROPS } from "./propsWorld.js";
 import { Character } from "./Character.js";
 import { t } from "../i18n/i18n.js";
 
@@ -51,6 +52,7 @@ export function labelSprite(text, { bg = "#ffffff", fg = "#3b3355" } = {}) {
   return sp;
 }
 
+const ALL_PROPS = { ...PROPS, ...WORLD_PROPS };
 const COLLIDE_KITS = new Set(["commercial", "suburban", "cars"]);
 
 export class World {
@@ -99,7 +101,7 @@ export class World {
       const kit = item.model.split("/")[0];
       if (item.collide ?? COLLIDE_KITS.has(kit)) collider = "auto";
     } else if (item.prop) {
-      obj = PROPS[item.prop](...(item.args || []));
+      obj = ALL_PROPS[item.prop](...(item.args || []));
       if (item.prop === "slab") {
         const [w, d, h] = item.args;
         const q = Math.round(((item.r || 0) % 180) / 90) !== 0;

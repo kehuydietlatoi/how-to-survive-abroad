@@ -43,3 +43,11 @@ Workflow per prop (do one end to end before batching):
 - Check it in the running game next to the Kenney characters for scale and style.
 
 Optional: Blender MCP can also call Hyper3D Rodin (text → 3D, needs an API key) for quick drafts. Characters should stay kit-based, because generated rigs and animations are much weaker than Kenney's.
+
+## 5. Globe land data
+
+The menu globe's land dots come from **Natural Earth** 110m land polygons (public domain, naturalearthdata.com), rasterised by `scripts/build-landmask.mjs` into `src/ui/landmask.js` (a 2° bitset). Regenerate with `node scripts/build-landmask.mjs ne_110m_land.geojson`.
+
+## 6. More procedural props
+
+`src/world/propsWorld.js` adds the props for the world scenarios (ticket gate, vending machine, grill table, rickshaw, cow, Thai temple & Buddha shrine, phone box, bar counter, diner booth, café table, bicycle, bakery, Sacré-Cœur, beach flags / lifeguard tower / umbrella…), built the same way as `props.js`.

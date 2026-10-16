@@ -156,11 +156,11 @@ export function departureBoard(rows) {
 }
 
 /** Red/white S-Bahn train along local z. */
-export function sbahnTrain(length = 16, dest = "S8 Hauptbahnhof") {
+export function sbahnTrain(length = 16, dest = "S8 Hauptbahnhof", stripe = "#e2231a") {
   const g = new THREE.Group();
   g.add(box(2.6, 0.6, length, "#4b5563", 0, 0, 0, 0.1)); // undercarriage
   g.add(box(2.8, 2.6, length, "#ffffff", 0, 0.6, 0, 0.35));
-  g.add(box(2.84, 0.7, length - 0.4, "#e2231a", 0, 0.75, 0, 0.1));
+  g.add(box(2.84, 0.7, length - 0.4, stripe, 0, 0.75, 0, 0.1));
   // windows
   for (let i = -length / 2 + 1.5; i < length / 2 - 1; i += 2.2) {
     g.add(box(2.86, 0.8, 1.4, "#5a7fa6", 0, 2.0, i, 0.12));
