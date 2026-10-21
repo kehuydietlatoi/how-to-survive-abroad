@@ -13,26 +13,6 @@ import anmMap from "../content/germany/anmeldung/map.js";
 import anmScenario from "../content/germany/anmeldung/scenario.js";
 import shopMap from "../content/germany/supermarket/map.js";
 import shopScenario from "../content/germany/supermarket/scenario.js";
-import jpMap from "../content/japan/rush-hour/map.js";
-import jpScenario from "../content/japan/rush-hour/scenario.js";
-import krMap from "../content/korea/bbq/map.js";
-import krScenario from "../content/korea/bbq/scenario.js";
-import thMap from "../content/thailand/temple/map.js";
-import thScenario from "../content/thailand/temple/scenario.js";
-import inMap from "../content/india/auto/map.js";
-import inScenario from "../content/india/auto/scenario.js";
-import usMap from "../content/usa/diner/map.js";
-import usScenario from "../content/usa/diner/scenario.js";
-import ukMap from "../content/uk/pub/map.js";
-import ukScenario from "../content/uk/pub/scenario.js";
-import frMap from "../content/france/paris/map.js";
-import frScenario from "../content/france/paris/scenario.js";
-import itMap from "../content/italy/coffee/map.js";
-import itScenario from "../content/italy/coffee/scenario.js";
-import nlMap from "../content/netherlands/bike/map.js";
-import nlScenario from "../content/netherlands/bike/scenario.js";
-import auMap from "../content/australia/beach/map.js";
-import auScenario from "../content/australia/beach/scenario.js";
 import { COUNTRIES } from "../content/countries.js";
 import { readdirSync, statSync, readFileSync } from "node:fs";
 
@@ -43,16 +23,6 @@ const all = [
   ["trash", trashMap, trashScenario],
   ["anmeldung", anmMap, anmScenario],
   ["supermarket", shopMap, shopScenario],
-  ["japan", jpMap, jpScenario],
-  ["korea", krMap, krScenario],
-  ["thailand", thMap, thScenario],
-  ["india", inMap, inScenario],
-  ["usa", usMap, usScenario],
-  ["uk", ukMap, ukScenario],
-  ["france", frMap, frScenario],
-  ["italy", itMap, itScenario],
-  ["netherlands", nlMap, nlScenario],
-  ["australia", auMap, auScenario],
 ];
 
 // Sort-game data: every item must point at an existing zone.
@@ -137,7 +107,7 @@ test("content folders match the country registry", () => {
 function registryBlocks() {
   const src = readFileSync("content/index.js", "utf8");
   return src
-    .split(/\n {2}\{\n {4}id: /)
+    .split(/\r?\n {2}\{\r?\n {4}id: /)
     .slice(1)
     .map((b) => ({
       id: b.match(/^"([a-z-]+)"/)[1],
@@ -150,7 +120,7 @@ function registryBlocks() {
 test("registry entries point at existing files and use known countries", () => {
   const ids = new Set(COUNTRIES.map((c) => c.id));
   const blocks = registryBlocks();
-  assert.equal(blocks.length, 16, "6 original + 10 new scenarios");
+  assert.equal(blocks.length, 6, "6 playable scenarios across Germany and Vietnam");
   const seen = new Set();
   for (const b of blocks) {
     assert.ok(!seen.has(b.id), `duplicate scenario id ${b.id}`);
@@ -163,32 +133,28 @@ test("registry entries point at existing files and use known countries", () => {
   for (const c of COUNTRIES) assert.ok(blocks.some((b) => b.country === c.id), `${c.id} has no scenario`);
 });
 
-const NEW = {
-  "japan/rush-hour": jpScenario,
-  "korea/bbq": krScenario,
-  "thailand/temple": thScenario,
-  "india/auto": inScenario,
-  "usa/diner": usScenario,
-  "uk/pub": ukScenario,
-  "france/paris": frScenario,
-  "italy/coffee": itScenario,
-  "netherlands/bike": nlScenario,
-  "australia/beach": auScenario,
+const PLAYABLE = {
+  "vietnam/cross-street-pho": vnScenario,
+  "vietnam/grab-ride": grabScenario,
+  "germany/airport-to-home": deScenario,
+  "germany/trash": trashScenario,
+  "germany/anmeldung": anmScenario,
+  "germany/supermarket": shopScenario,
 };
 
 // Every minigame a scenario step asks for must be provided by its registry entry.
 test("minigame steps use minigames the registry provides", () => {
   const byDir = new Map(registryBlocks().map((b) => [b.dir, b.minigames]));
-  for (const [dir, sc] of Object.entries(NEW)) {
+  for (const [dir, sc] of Object.entries(PLAYABLE)) {
     const provided = byDir.get(dir);
     assert.ok(provided, dir);
     for (const st of sc.steps.filter((x) => x.type === "minigame")) assert.ok(provided.includes(st.game), `${dir}: ${st.id} needs "${st.game}"`);
   }
 });
 
-// A perfect run through every new scenario reaches the end, so no branch is a dead end.
-test("new scenarios can be played through to the end", () => {
-  for (const sc of Object.values(NEW)) {
+// A perfect run through every playable scenario reaches the end, so no branch is a dead end.
+test("playable scenarios can be played through to the end", () => {
+  for (const sc of Object.values(PLAYABLE)) {
     const r = new ScenarioRunner(sc);
     let guard = 0;
     while (!r.finished && guard++ < 200) {
