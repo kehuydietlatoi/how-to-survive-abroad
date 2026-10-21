@@ -24,19 +24,6 @@ All text is available in **English and Vietnamese** (toggle on the menu or with 
 
 The menu is a **spinning globe** (`src/ui/Globe.js`, dotted land built from Natural Earth data): drag to spin, tap a country pin (or its chip) to list that country's scenarios first, the rest below. Countries live in `content/countries.js`.
 
-**Around the world** (each ~5–7 min, EN + VI, facts checked and recorded in the header of every `scenario.js`):
-
-- 🇯🇵 **Japan: Tokyo rush hour**: IC-card gate → door-mark queue → **"OK on a Tokyo train?" swipe-judge** → no public bins → lost wallet at the kōban.
-- 🇰🇷 **South Korea: Hoesik BBQ dinner**: seats, eldest eats first → **grill minigame** (flip pork, serve golden, pour the boss's soju with two hands) → soju etiquette → declining the second round → no tipping.
-- 🇹🇭 **Thailand: Grand Palace**: dodge the "palace is closed" tuk-tuk scam → **temple wardrobe sort game** → feet, monks, the royal anthem.
-- 🇮🇳 **India: Delhi auto-rickshaw**: "meter kharab" → **haggle minigame** → cow in the road → chai, UPI/cash, right hand, the head wobble.
-- 🇺🇸 **USA: roadside diner**: wait to be seated → price + tax + tip → **"tip expected or optional?" swipe-judge** → boxes, 911 and insurance.
-- 🇬🇧 **UK: London**: queue → cashless bus → Tube touch in/out + escalator → pub bar ordering, rounds, Challenge 25 → **"what the British really mean" swipe-judge**.
-- 🇫🇷 **France: Paris**: "bonjour" → carafe d'eau → service compris → la bise → **Sacré-Cœur steps lane-dodger** past bracelet hustlers and pigeons.
-- 🇮🇹 **Italy: Rome espresso bar**: cassa first, banco vs tavolo → **coffee-clock sort game** → coperto → validate your bus ticket.
-- 🇳🇱 **Netherlands: Amsterdam bike**: don't buy the hot bike → two locks → stay off the red lane → lights, phone, tram rails, priority from the right → **fietspad lane-dodger** (ring your bell!).
-- 🇦🇺 **Australia: Sydney beach**: Slip-Slop-Slap → between the flags → **swim lane-dodger** → rip current, bluebottle sting, drop bears, 000.
-
 Wrong answers in choices must be re-picked until an acceptable one is chosen; the score and journal keep the first pick.
 
 The street-crossing traffic is a small simulation: riders steer around where they **predict** you will be, so walking slowly and steadily is safe, while sprinting, stopping suddenly or stepping back causes bumps. `node scripts/tune-crossing.mjs` prints the balance (steady ≈ 99, sprint ≈ 80, stop ≈ 83, step back ≈ 52 average score).
@@ -66,7 +53,7 @@ src/
   world/     World (builds a map, interactables, floating labels, cut-away fading), Character, props (procedural props)
   scenario/  ScenarioRunner (pure state machine, unit tested), ScenarioScene (glues runner ↔ world ↔ UI)
   minigames/ StreetCrossing (+ crossingSim, pure & tested), TicketMachine, PhoEating, GrabRide, SortGame, CallBoard, …
-             reusable engines with pure, tested logic: SwipeJudge (swipeLogic), DodgeLane (laneLogic), Haggle (haggleLogic), Grill (grillLogic)
+             reusable engines with pure, tested logic, currently unused and ready for future scenarios: SwipeJudge (swipeLogic), DodgeLane (laneLogic), Haggle (haggleLogic), Grill (grillLogic)
   ui/        dialogs, choices, HUD, toasts, result screen
   i18n/      UI strings + t() for inline { en, vi } text
 ```

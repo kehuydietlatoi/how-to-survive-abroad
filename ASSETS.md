@@ -50,4 +50,4 @@ The menu globe's land dots come from **Natural Earth** 110m land polygons (publi
 
 ## 6. More procedural props
 
-`src/world/propsWorld.js` adds the props for the world scenarios (ticket gate, vending machine, grill table, rickshaw, cow, Thai temple & Buddha shrine, phone box, bar counter, diner booth, café table, bicycle, bakery, Sacré-Cœur, beach flags / lifeguard tower / umbrella…), built the same way as `props.js`.
+`src/world/propsWorld.js` adds the props that were built for the world scenarios (ticket gate, vending machine, grill table, rickshaw, cow, Thai temple & Buddha shrine, phone box, bar counter, diner booth, café table, bicycle, bakery, Sacré-Cœur, beach flags / lifeguard tower / umbrella…), built the same way as `props.js`. Those scenarios are temporarily removed from the game; the props are kept for reuse.
