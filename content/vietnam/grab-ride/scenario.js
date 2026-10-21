@@ -34,7 +34,7 @@ export default {
       speaker: xeOm,
       icon: "🧔",
       onEnter: [{ do: "anim", id: "xeOm", anim: "emote-yes" }],
-      prompt: { en: "“Xe ôm! Văn Miếu? **Two hundred thousand!**” (200.000đ)", vi: "“Xe ôm không? Văn Miếu à? **Hai trăm nghìn!**” (200.000đ)" },
+      prompt: { en: "“Xe ôm! Văn Miếu? **200,000 dong!**” (200.000đ)", vi: "“Xe ôm không? Văn Miếu à? **Hai trăm nghìn!**” (200.000đ)" },
       options: [
         {
           text: { en: "OK, let's go!", vi: "OK, đi thôi!" },

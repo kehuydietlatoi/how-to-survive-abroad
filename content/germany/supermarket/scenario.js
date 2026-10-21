@@ -2,7 +2,7 @@
 // Facts checked Oct 2026: shops are closed on Sundays & public holidays (Ladenschluss);
 // bakeries and shops at main stations / petrol stations may open. Shopping carts usually
 // need a €1 coin or a cart chip. Deposits: €0.25 single-use bottles & cans, €0.08 / €0.15
-// reusable bottles. Shopping bags cost money. Cashiers scan fast; customers pack at the
+// refillable bottles. Shopping bags cost money. Cashiers scan fast; customers pack at the
 // packing shelf after paying. The store name is fictional.
 
 const cashier = { en: "Cashier", vi: "Thu ngân" };
@@ -134,7 +134,7 @@ export default {
           text: { en: "“Nein danke, ich habe eine Tasche.” (I brought my own)", vi: "“Nein danke, ich habe eine Tasche.” (Tôi có túi rồi)" },
           points: 10,
           correct: true,
-          feedback: { en: "Very German! Most people bring reusable bags or a folding box.", vi: "Rất kiểu Đức! Hầu hết mọi người mang túi tái sử dụng hoặc hộp gấp." },
+          feedback: { en: "Very German! Most people bring their own bags or a folding box.", vi: "Rất kiểu Đức! Hầu hết mọi người mang túi tái sử dụng hoặc hộp gấp." },
         },
         {
           text: { en: "“Ja, bitte.” Buy a bag", vi: "“Ja, bitte.” Mua một chiếc túi" },
