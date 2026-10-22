@@ -1,8 +1,8 @@
 import * as THREE from "three";
 import { instance, preload, toon } from "../core/Assets.js";
 import { CollisionWorld } from "../core/Collision.js";
-import { PROPS, ground } from "./props.js";
-import { WORLD_PROPS } from "./propsWorld.js";
+import { ground } from "./props.js";
+import { ALL_PROPS } from "./registry.js";
 import { Character } from "./Character.js";
 import { t } from "../i18n/i18n.js";
 
@@ -10,6 +10,7 @@ import { t } from "../i18n/i18n.js";
 //
 // map = {
 //   sky, fog: [near, far], grounds: [{ size:[w,d], p:[x,z], color }],
+//   camera?: { height, distance, fov?, lookAhead?, aim? }   (follow-camera override, see Game.js)
 //   spawns: { name: [x, z, rotDeg] },
 //   items: [
 //     { model: "roads/road-straight", p:[x,z], r, s?, y?, tint?, collide? }
@@ -52,8 +53,19 @@ export function labelSprite(text, { bg = "#ffffff", fg = "#3b3355" } = {}) {
   return sp;
 }
 
-const ALL_PROPS = { ...PROPS, ...WORLD_PROPS };
 const COLLIDE_KITS = new Set(["commercial", "suburban", "cars"]);
+// Cutaway: only occluders within ±CUTAWAY_HALF_WIDTH m (x) of the player are tested, against
+// sight lines to these points on the body ([dx, dy] from the head).
+const CUTAWAY_HALF_WIDTH = 4;
+const CUTAWAY_HYSTERESIS = 0.4;
+// Overhead clutter that joins the cutaway even without `fade` (it hangs across the low camera's view).
+const CUTAWAY_PROPS = new Set(["lanternString", "cableTangle"]);
+const SIGHT_POINTS = [
+  [0, 0.3],
+  [-0.35, -0.4],
+  [0.35, -0.4],
+  [0, -0.9],
+];
 
 export class World {
   constructor(scene) {
@@ -67,8 +79,11 @@ export class World {
     this.wallBoxes = {};
     this.floors = []; // raised walkable slabs: { minX, maxX, minZ, maxZ, h }
     this.occluders = []; // { obj, box, opacity, mats }
+    this.player = null; // the player's Character, set by the scene once spawned
     this._ray = new THREE.Ray();
     this._hit = new THREE.Vector3();
+    this._eye = new THREE.Vector3();
+    this._box = new THREE.Box3();
   }
 
   static modelIds(map) {
@@ -127,9 +142,8 @@ export class World {
     obj.rotation.y = THREE.MathUtils.degToRad(item.r || 0);
     this.root.add(obj);
     if (item.hidden) obj.visible = false;
-    if (item.fade) {
+    if (item.fade ?? CUTAWAY_PROPS.has(item.prop)) {
       obj.updateMatrixWorld(true);
-      // Expanded sideways so neighbours at the screen edge fade too.
       const box = new THREE.Box3().setFromObject(obj);
       this.occluders.push({ obj, box, opacity: 1, mats: null });
     }
@@ -210,7 +224,11 @@ export class World {
     for (const b of this.wallBoxes[tag] || []) b.enabled = enabled;
   }
 
-  /** Fade objects that sit between the camera and the player (cutaway view). */
+  /**
+   * Cutaway view: fade "fade"-marked objects in a narrow corridor (±CUTAWAY_HALF_WIDTH m) around
+   * the player that stand between the player and the camera (+z) or cut a sight line from the
+   * camera to the body. `target` is the player's head.
+   */
   updateOccluders(dt, camera, target) {
     // Floating labels only for things nearby (they draw on top of walls).
     for (const it of this.interactables) {
@@ -218,16 +236,16 @@ export class World {
     }
     if (!this.occluders.length) return;
     const from = camera.position;
-    const dir = this._hit.copy(target).sub(from);
-    const dist = dir.length();
-    this._ray.set(from, dir.normalize());
-    const p = new THREE.Vector3();
     for (const o of this.occluders) {
-      // Anything marked "fade" that stands between the player and the camera (in z) and is
-      // roughly on screen gets faded, plus whatever the direct sight line hits.
-      const hit = this._ray.intersectBox(o.box, p);
-      const between = (o.box.min.z + o.box.max.z) / 2 > target.z + 1 && o.box.min.z < from.z && o.box.min.x < target.x + 16 && o.box.max.x > target.x - 16;
-      const blocking = between || (hit && from.distanceTo(p) < dist - 0.5);
+      const b = o.box;
+      // Once faded, an object stays faded until it clears the corridor by a margin (no flicker).
+      const m = o.opacity < 1 ? CUTAWAY_HYSTERESIS : 0;
+      const inCorridor = b.min.x - m < target.x + CUTAWAY_HALF_WIDTH && b.max.x + m > target.x - CUTAWAY_HALF_WIDTH;
+      // Wholly between the player and the camera: it would wall in the view around the player.
+      // (Centre test: awnings and balconies may reach over the player.)
+      const inFront = (b.min.z + b.max.z) / 2 + m > target.z + 1 && b.min.z < from.z;
+      const box = m ? this._box.copy(b).expandByScalar(m) : b;
+      const blocking = inCorridor && (inFront || this._hidesTarget(box, from, target));
       const goal = blocking ? 0 : 1;
       if (Math.abs(o.opacity - goal) < 0.01) continue;
       if (!o.mats) {
@@ -249,6 +267,18 @@ export class World {
       if (goal === 0 && o.opacity < 0.05) o.opacity = 0;
       if (goal === 1 && o.opacity > 0.98) o.opacity = 1;
     }
+  }
+
+  /** Does `box` cut a sight line from `from` to the head, shoulders or feet below `head`? */
+  _hidesTarget(box, from, head) {
+    for (const [dx, dy] of SIGHT_POINTS) {
+      const eye = this._eye.set(head.x + dx, head.y + dy, head.z);
+      const dir = this._hit.copy(eye).sub(from);
+      const dist = dir.length();
+      this._ray.set(from, dir.normalize());
+      if (this._ray.intersectBox(box, this._hit) && from.distanceTo(this._hit) < dist - 0.3) return true;
+    }
+    return false;
   }
 
   update(dt, time) {
