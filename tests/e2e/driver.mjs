@@ -178,6 +178,7 @@ export class Playthrough {
       }));
       await this.page.waitForTimeout(180);
     }
+    await this.sampleLife();
     if (process.env.E2E_EXTRAS === '1' && this.shots) {
       await this.page.setViewportSize({ width: 390, height: 844 });
       await this.shot('extra-mobile');
@@ -198,6 +199,31 @@ export class Playthrough {
         await this.shot('extra-vietnamese', page);
       } finally { await localized.close(); }
     }
+  }
+
+  /** Count NPCs and vehicles that move more than 1 m over 10 s of roaming. */
+  async sampleLife(seconds = 10) {
+    const read = () => this.page.evaluate(() => {
+      const { world } = window.__hsa.scene;
+      return {
+        npcs: world.npcs.map(c => [c.root.position.x, c.root.position.z]),
+        vehicles: world.life.lanes.flatMap(l => l.objects.map(o => [o.position.x, o.position.z])),
+      };
+    });
+    // Sample every 0.5 s and keep each object's largest distance from its start, so a walker that
+    // pauses at a waypoint or loops back to where it began still counts as moving.
+    const before = await read();
+    const far = { npcs: before.npcs.map(() => 0), vehicles: before.vehicles.map(() => 0) };
+    for (let t = 0; t < seconds * 2; t++) {
+      await this.page.waitForTimeout(500);
+      const now = await read();
+      for (const k of ['npcs', 'vehicles']) {
+        before[k].forEach((p, i) => { const q = now[k][i]; if (q) far[k][i] = Math.max(far[k][i], Math.hypot(p[0] - q[0], p[1] - q[1])); });
+      }
+    }
+    const moved = d => d.filter(m => m > 1).length;
+    this.log.life = { seconds, npcs: before.npcs.length, movingNpcs: moved(far.npcs),
+      vehicles: before.vehicles.length, movingVehicles: moved(far.vehicles) };
   }
 
   checkDeadline() {
@@ -232,11 +258,42 @@ export class Playthrough {
         if (await click(selector)) return;
       }
     } else if (step.game === 'sort') {
-      if (await click('.sort-summary button') || await click('.sort-explain.show button')) return;
+      if (await p.locator('.sort-summary').isVisible()) {
+        this.active.events.push({ type: 'sortSummary', text: await p.locator('.sort-summary').innerText() });
+        await click('.sort-summary button');
+        return;
+      }
+      const count = await p.locator('.sort-count').textContent();
+      const waitForNext = () => p.waitForFunction(previous =>
+        document.querySelector('.sort-summary') ||
+        document.querySelector('.sort-count')?.textContent !== previous, count);
+      if (await click('.sort-explain.show button')) {
+        await waitForNext();
+        return;
+      }
       const name = await p.locator('.sort-card .cn').textContent();
       const item = step.params.items.find(i => Object.values(i.name).includes(name));
       if (!item) throw new Error(`Unknown sort card: ${name}`);
+      await p.evaluate(() => {
+        document.querySelector('.sort-zones').addEventListener('click', e => {
+          window.__sortClick = {
+            card: document.querySelector('.sort-card .cn')?.textContent,
+            zone: e.target.closest('[data-z]')?.dataset.z,
+          };
+        }, { once: true, capture: true });
+      });
       await click(`[data-z="${[].concat(item.zone)[0]}"]`);
+      this.active.events.push({ type: 'sortAnswer', expectedCard: name, ...await p.evaluate(() => window.__sortClick) });
+      // A click returns before the 380 ms flight finishes. Wait for the next
+      // card before reading its answer: Playwright may defer a later click
+      // until a moving bin settles, applying a stale answer to the next card.
+      await p.waitForFunction(previous =>
+        document.querySelector('.sort-explain.show') ||
+        document.querySelector('.sort-summary') ||
+        document.querySelector('.sort-count')?.textContent !== previous, count);
+      if (await p.locator('.sort-explain.show').isVisible()) {
+        throw new Error(`Correct-answer sort bot made a mistake on ${name}`);
+      }
     } else if (step.game === 'callBoard') {
       const called = await p.evaluate(() => document.querySelector('.cb-row.new span')?.textContent);
       if (called?.trim() === (step.params?.mine || 'A-117')) await click('.cb-btn');

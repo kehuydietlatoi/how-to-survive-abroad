@@ -1,22 +1,32 @@
 import * as THREE from "three";
 import { instance, preload, toon } from "../core/Assets.js";
 import { CollisionWorld } from "../core/Collision.js";
-import { PROPS, ground } from "./props.js";
-import { WORLD_PROPS } from "./propsWorld.js";
+import { ground } from "./props.js";
+import { ALL_PROPS } from "./registry.js";
 import { Character } from "./Character.js";
+import { Life } from "./Life.js";
 import { t } from "../i18n/i18n.js";
 
 // Builds a fixed map from a data description (see content/*/map.js).
 //
 // map = {
 //   sky, fog: [near, far], grounds: [{ size:[w,d], p:[x,z], color }],
+//   camera?: { height, distance, fov?, lookAhead?, aim? }   (follow-camera override, see Game.js)
 //   spawns: { name: [x, z, rotDeg] },
 //   items: [
 //     { model: "roads/road-straight", p:[x,z], r, s?, y?, tint?, collide? }
 //     { prop: "ticketMachine", args?: [...], p, r, y?, collide? }
 //     { npc: "character-female-a", p, r, anim? }
+//     { npc, path: [[x,z], ...], speed?: 1.1, loop?: true|'pingpong'|false,
+//       pause?: [minSeconds,maxSeconds] } (starts at path[0]; pauses idle, yields within 1 m)
 //     any item may have `id` to be looked up later (world.objects[id])
+//     placed objects may define userData.update(dt,time), called every World.update
 //   ],
+//   crowd?: { count, area:[minX,minZ,maxX,maxZ], npcs?: [characterModel,...] },
+//   traffic?: [{ from:[x,z], to:[x,z], vehicles:[{ prop, args? } | { model, s?, tint? }],
+//     speed?: [min,max], spacing?: 12, count?: 3 }],
+//   Traffic wraps to `from`; spacing is centre-to-centre (allow for the longest vehicle).
+//   Path pedestrians, crowd and traffic have NO colliders. Traffic yields within 3 m.
 //   walls: [[minX, minZ, maxX, maxZ, tag?]],
 //   interactables: [{ id, p:[x,z], radius, label:{en,vi}, say?:{en,vi}, y? }]
 // }
@@ -52,8 +62,12 @@ export function labelSprite(text, { bg = "#ffffff", fg = "#3b3355" } = {}) {
   return sp;
 }
 
-const ALL_PROPS = { ...PROPS, ...WORLD_PROPS };
 const COLLIDE_KITS = new Set(["commercial", "suburban", "cars"]);
+// Cutaway: only occluders within ±CUTAWAY_HALF_WIDTH m (x) of the player are tested, against
+// sight lines to a grid of points spanning the body (arms out) from head to feet ([dx, dy] from the head).
+const CUTAWAY_HALF_WIDTH = 4;
+const CUTAWAY_HYSTERESIS = 0.4;
+const SIGHT_POINTS = [-0.6, 0, 0.6].flatMap((dx) => [0.3, -0.3, -0.9].map((dy) => [dx, dy]));
 
 export class World {
   constructor(scene) {
@@ -63,17 +77,23 @@ export class World {
     this.collision = new CollisionWorld();
     this.objects = {};
     this.npcs = [];
+    this.life = new Life(this);
+    this.animatedObjects = []; // placed roots; no per-frame scene traversal
     this.interactables = [];
     this.wallBoxes = {};
     this.floors = []; // raised walkable slabs: { minX, maxX, minZ, maxZ, h }
     this.occluders = []; // { obj, box, opacity, mats }
+    this.player = null; // the player's Character, set by the scene once spawned
     this._ray = new THREE.Ray();
     this._hit = new THREE.Vector3();
+    this._eye = new THREE.Vector3();
+    this._box = new THREE.Box3();
   }
 
   static modelIds(map) {
-    const ids = map.items.filter((i) => i.model).map((i) => i.model);
-    for (const i of map.items) if (i.npc) ids.push(`characters/${i.npc}`);
+    const ids = (map.items || []).filter((i) => i.model).map((i) => i.model);
+    for (const i of map.items || []) if (i.npc) ids.push(`characters/${i.npc}`);
+    ids.push(...Life.modelIds(map));
     return ids;
   }
 
@@ -85,7 +105,8 @@ export class World {
       m.position.z = g.p[1];
       this.root.add(m);
     }
-    for (const item of map.items) await this._place(item);
+    for (const item of map.items || []) await this._place(item);
+    await this.life.build(map);
     for (const w of map.walls || []) {
       const b = this.collision.addBox(w[0], w[1], w[2], w[3], w[4]);
       if (w[4]) (this.wallBoxes[w[4]] ||= []).push(b);
@@ -94,6 +115,7 @@ export class World {
   }
 
   async _place(item) {
+    if (item.npc && item.path) item = { ...item, p: item.path[0] };
     let obj;
     let collider = null;
     if (item.model) {
@@ -112,24 +134,25 @@ export class World {
       if (item.s) obj.scale.setScalar(item.s);
       if (obj.userData.collider && item.collide !== false) collider = obj.userData.collider;
     } else if (item.npc) {
-      const c = await Character.create(item.npc);
+      const c = item.path && !item.helmet ? await Character.acquire(item.npc) : await Character.create(item.npc);
       c.play(item.anim || "idle");
       if (item.helmet) c.addHelmet();
       c.mixer.setTime(Math.random() * 2);
       obj = c.root;
       this.npcs.push(c);
-      if (item.collide !== false) collider = { w: 0.7, d: 0.7, ox: 0, oz: 0 };
+      if (!item.path && item.collide !== false) collider = { w: 0.7, d: 0.7, ox: 0, oz: 0 };
       if (item.id) this.objects[item.id + ":char"] = c;
+      if (item.path) this.life.addPedestrian(c, item);
     } else {
       throw new Error(`bad map item ${JSON.stringify(item)}`);
     }
     obj.position.set(item.p[0], item.y || 0, item.p[1]);
     obj.rotation.y = THREE.MathUtils.degToRad(item.r || 0);
     this.root.add(obj);
+    this.animatedObjects.push(obj);
     if (item.hidden) obj.visible = false;
     if (item.fade) {
       obj.updateMatrixWorld(true);
-      // Expanded sideways so neighbours at the screen edge fade too.
       const box = new THREE.Box3().setFromObject(obj);
       this.occluders.push({ obj, box, opacity: 1, mats: null });
     }
@@ -210,7 +233,11 @@ export class World {
     for (const b of this.wallBoxes[tag] || []) b.enabled = enabled;
   }
 
-  /** Fade objects that sit between the camera and the player (cutaway view). */
+  /**
+   * Cutaway view: fade only "fade"-marked objects within a narrow corridor (±CUTAWAY_HALF_WIDTH m
+   * in x) around the player that actually cut a sight line from the camera to the player's body.
+   * `target` is the player's head.
+   */
   updateOccluders(dt, camera, target) {
     // Floating labels only for things nearby (they draw on top of walls).
     for (const it of this.interactables) {
@@ -218,16 +245,12 @@ export class World {
     }
     if (!this.occluders.length) return;
     const from = camera.position;
-    const dir = this._hit.copy(target).sub(from);
-    const dist = dir.length();
-    this._ray.set(from, dir.normalize());
-    const p = new THREE.Vector3();
     for (const o of this.occluders) {
-      // Anything marked "fade" that stands between the player and the camera (in z) and is
-      // roughly on screen gets faded, plus whatever the direct sight line hits.
-      const hit = this._ray.intersectBox(o.box, p);
-      const between = (o.box.min.z + o.box.max.z) / 2 > target.z + 1 && o.box.min.z < from.z && o.box.min.x < target.x + 16 && o.box.max.x > target.x - 16;
-      const blocking = between || (hit && from.distanceTo(p) < dist - 0.5);
+      const b = o.box;
+      const inCorridor = b.min.x < target.x + CUTAWAY_HALF_WIDTH && b.max.x > target.x - CUTAWAY_HALF_WIDTH;
+      // Once faded, an object stays faded until the sight lines clear it by a margin (no flicker).
+      const box = o.opacity < 1 ? this._box.copy(b).expandByScalar(CUTAWAY_HYSTERESIS) : b;
+      const blocking = inCorridor && this._hidesTarget(box, from, target);
       const goal = blocking ? 0 : 1;
       if (Math.abs(o.opacity - goal) < 0.01) continue;
       if (!o.mats) {
@@ -239,20 +262,34 @@ export class World {
         });
       }
       o.opacity += (goal - o.opacity) * Math.min(1, dt * 8);
+      if (goal === 0 && o.opacity < 0.05) o.opacity = 0;
+      if (goal === 1 && o.opacity > 0.98) o.opacity = 1;
       for (const m of o.mats) {
         m.transparent = o.opacity < 0.99;
         m.opacity = o.opacity;
         m.depthWrite = o.opacity > 0.9;
       }
       o.obj.traverse((m) => m.isMesh && (m.castShadow = o.opacity > 0.5));
-      o.obj.visible = o.opacity > 0.04; // fully hidden cutaway once faded out
-      if (goal === 0 && o.opacity < 0.05) o.opacity = 0;
-      if (goal === 1 && o.opacity > 0.98) o.opacity = 1;
+      o.obj.visible = o.opacity > 0; // fully hidden cutaway once faded out
     }
   }
 
+  /** Does `box` cut a sight line from `from` to any SIGHT_POINTS on the body below `head`? */
+  _hidesTarget(box, from, head) {
+    for (const [dx, dy] of SIGHT_POINTS) {
+      const eye = this._eye.set(head.x + dx, head.y + dy, head.z);
+      const dir = this._hit.copy(eye).sub(from);
+      const dist = dir.length();
+      this._ray.set(from, dir.normalize());
+      if (this._ray.intersectBox(box, this._hit) && from.distanceTo(this._hit) < dist - 0.3) return true;
+    }
+    return false;
+  }
+
   update(dt, time) {
+    this.life.update(dt);
     for (const n of this.npcs) n.update(dt);
+    for (const obj of this.animatedObjects) obj.userData.update?.(dt, time);
     for (const it of this.interactables) {
       it.ring.visible = it.enabled;
       it.ring.material.opacity = 0.35 + 0.25 * Math.sin(time * 3);
@@ -268,6 +305,7 @@ export class World {
   }
 
   dispose() {
+    this.life.dispose();
     // Geometries/materials are shared through caches, so only detach the tree.
     this.scene.remove(this.root);
   }

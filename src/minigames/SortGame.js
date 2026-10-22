@@ -19,6 +19,11 @@ const TXT = {
   gotIt: { en: "Got it", vi: "Hiểu rồi" },
   done: { en: "All sorted!", vi: "Xong hết rồi!" },
   firstTry: { en: "right first time", vi: "đúng ngay lần đầu" },
+  score: { en: "Score:", vi: "Điểm:" },
+  scoring: {
+    en: "Only first-try answers count toward your score. Each mistake loses that item's share of 100 points. Time and streaks do not affect your score.",
+    vi: "Chỉ câu trả lời đúng ngay lần đầu được tính điểm. Mỗi lỗi mất phần điểm của món đó trong tổng 100 điểm. Thời gian và chuỗi đúng không ảnh hưởng đến điểm.",
+  },
   review: { en: "Remember:", vi: "Ghi nhớ:" },
   continue: { en: "Continue", vi: "Tiếp tục" },
   streak: { en: "streak", vi: "liên tiếp" },
@@ -201,6 +206,8 @@ export const SortGame = {
         stage.innerHTML = `<div class="sort-summary pop">
           <h3>✨ ${esc(t(TXT.done))}</h3>
           <div class="big">${right} / ${items.length} <small>${esc(t(TXT.firstTry))}</small></div>
+          <div>${esc(t(TXT.score))} ${score} / 100</div>
+          <p>${esc(t(TXT.scoring))}</p>
           ${best >= 3 ? `<div>🔥 ${best} ${esc(t(TXT.streak))}</div>` : ""}
           ${
             mistakes.length

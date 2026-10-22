@@ -309,6 +309,31 @@ export function phoBowl() {
   return g;
 }
 
+/** Lightweight rising steam, reusable on pots and close-up bowls. No shadow or depth occlusion. */
+let steamGeometry;
+export function steamPlume(radius = 0.08, height = 0.8, count = 6) {
+  steamGeometry ||= new THREE.SphereGeometry(1, 6, 5);
+  const g = new THREE.Group();
+  g.name = "steam";
+  for (let i = 0; i < count; i++) {
+    const puff = new THREE.Mesh(steamGeometry, new THREE.MeshBasicMaterial({
+      color: "#fff8e9", transparent: true, opacity: 0, depthWrite: false,
+    }));
+    g.add(puff);
+  }
+  g.userData.update = (dt, time) => {
+    for (let i = 0; i < count; i++) {
+      const puff = g.children[i];
+      const phase = (time * 0.45 + i / count) % 1;
+      puff.position.set(Math.sin(time * 1.3 + i) * radius * 0.7, phase * height, Math.cos(time + i) * radius * 0.4);
+      puff.scale.setScalar(radius * (0.65 + phase * 1.5));
+      puff.material.opacity = Math.sin(phase * Math.PI) * 0.25;
+    }
+  };
+  g.userData.update(0, 0);
+  return g;
+}
+
 /** Street phở stall: cart with glass box, sign, stools and low tables. */
 export function phoStall() {
   const g = new THREE.Group();
@@ -331,6 +356,10 @@ export function phoStall() {
     [0.7, 0.35],
   ])
     g.add(box(0.06, 1.75, 0.06, "#8a919c", x, 0, z));
+  const steam = steamPlume();
+  steam.position.set(-0.4, 1.6, 0.3);
+  g.add(steam);
+  g.userData.update = (dt, time) => steam.userData.update(dt, time);
   return withCollider(g, 1.6, 0.8);
 }
 
@@ -364,8 +393,18 @@ export function lanternString(len = 8, colors = ["#ff4d4d", "#ffd23f", "#ff8c42"
   for (let i = 0; i < n; i++) {
     const x = -len / 2 + (i + 0.5) * (len / n);
     const y = 4.2 - Math.sin(((i + 0.5) / n) * Math.PI) * 0.4;
-    g.add(mesh(new THREE.SphereGeometry(0.18, 12, 10), toon(colors[i % colors.length], { emissive: "#401010" }), x, y, 0));
+    const pivot = new THREE.Group();
+    pivot.position.set(x, y + 0.3, 0);
+    const lantern = mesh(new THREE.SphereGeometry(0.18, 12, 10), toon(colors[i % colors.length], { emissive: "#401010" }), 0, -0.3, 0);
+    pivot.add(lantern);
+    g.add(pivot);
   }
+  g.userData.update = (dt, time) => {
+    g.children.forEach((pivot, i) => {
+      pivot.rotation.x = Math.sin(time * 1.2 + i * 0.5) * 0.12;
+      pivot.rotation.z = Math.sin(time * 0.9 + i * 0.4) * 0.08;
+    });
+  };
   return g;
 }
 

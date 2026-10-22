@@ -46,78 +46,144 @@ const TXT = {
 
 const VIEW = { fov: 42 };
 
+// The approach/crossing gives the close-up time to build, compile and upload before order.
+const tables = new WeakMap();
+const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+
+function prepareTable(ctx) {
+  if (tables.has(ctx.scene)) return tables.get(ctx.scene);
+  const state = { disposed: false, scene: null, sun: null, table: null, error: null };
+  tables.set(ctx.scene, state);
+  ctx.scene.onDispose(() => {
+    state.disposed = true;
+    state.sun?.shadow.dispose();
+    // Toon materials and the porcelain texture are shared; the table geometries are private.
+    const geometries = new Set();
+    state.scene?.traverse(obj => {
+      if (!obj.isMesh) return;
+      for (let parent = obj; parent; parent = parent.parent) if (parent.name === "steam") return;
+      geometries.add(obj.geometry);
+    });
+    geometries.forEach(geometry => geometry.dispose());
+    state.scene?.clear();
+    state.table = null;
+    tables.delete(ctx.scene);
+  });
+  state.ready = buildTable(ctx, state).then(table => {
+    if (!state.disposed) state.table = table;
+  }).catch(error => { state.error = error; });
+  return state;
+}
+
+async function buildTable(ctx, state) {
+  // ---------------------------------------------------------------- 3D scene
+  const scene = state.scene = new THREE.Scene();
+  scene.background = new THREE.Color("#ffe7c2");
+  scene.add(new THREE.HemisphereLight("#fff6e8", "#b7a58c", 1.7));
+  const sun = state.sun = new THREE.DirectionalLight("#fff1d6", 2.2);
+  sun.position.set(0.4, 1.2, 0.5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -0.4, right: 0.4, top: 0.4, bottom: -0.4, near: 0.1, far: 3 });
+  sun.shadow.bias = -0.0003;
+  scene.add(sun);
+
+  const table = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.7), toon("#4da3ff"));
+  table.position.y = -0.02;
+  table.receiveShadow = true;
+  scene.add(table);
+  // street tiles below for context
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), toon("#d8c8ae"));
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -0.5;
+  scene.add(floor);
+
+  const bowl = makeBowl();
+  scene.add(bowl);
+  await nextFrame();
+  if (state.disposed) return;
+  const cond = makeCondiments();
+  scene.add(cond.group);
+  await nextFrame();
+  if (state.disposed) return;
+  const { chop, spoon } = makeUtensils();
+  scene.add(chop, spoon);
+  const restChop = new THREE.Vector3(0.1, 0.13, 0.05);
+  const restSpoon = new THREE.Vector3(-0.1, 0.11, 0.07);
+  // Utensils point their handles toward "you": chopsticks in the right hand, spoon in the left.
+  chop.position.copy(restChop);
+  chop.lookAt(restChop.clone().add(new THREE.Vector3(0.35, 1, 0.3)));
+  spoon.position.copy(restSpoon);
+  spoon.lookAt(restSpoon.clone().add(new THREE.Vector3(-0.35, 0, 0.9)));
+
+  // Noodle strand lifted by the chopsticks.
+  const strand = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
+    const pts = [];
+    for (let s = 0; s <= 8; s++) pts.push(new THREE.Vector3((i - 1.5) * 0.003 + Math.sin(s + i) * 0.003, -s * 0.012, Math.cos(s * 0.7 + i) * 0.003));
+    strand.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.0026, 5), toon("#f6f0df")));
+  }
+  strand.visible = false;
+  scene.add(strand);
+  const spoonBroth = new THREE.Mesh(new THREE.CircleGeometry(0.018, 14), toon("#e3a85a"));
+  spoonBroth.rotation.x = -Math.PI / 2;
+  spoonBroth.position.y = 0.022;
+  spoonBroth.scale.set(1, 1.3, 1);
+  spoonBroth.visible = false;
+  spoon.add(spoonBroth);
+
+  const camera = new THREE.PerspectiveCamera(VIEW.fov, 1, 0.01, 10);
+  const fit = () => {
+    const aspect = innerWidth / innerHeight;
+    camera.aspect = aspect;
+    // Portrait screens need the camera further away to keep the condiments in view.
+    const d = aspect < 1 ? 0.7 / Math.max(aspect, 0.45) : 0.72;
+    camera.position.set(0, d * 0.85, d * 0.6);
+    camera.lookAt(0, 0, aspect < 1 ? 0.02 : 0.0);
+    camera.updateProjectionMatrix();
+  };
+  fit();
+  // Precompile and upload the table plus initially-hidden action props off screen.
+  strand.visible = spoonBroth.visible = true;
+  await ctx.game.renderer.compileAsync(scene, camera);
+  if (state.disposed) return;
+  await nextFrame();
+  if (state.disposed) return;
+  const renderer = ctx.game.renderer;
+  const target = new THREE.WebGLRenderTarget(64, 64);
+  const previous = renderer.getRenderTarget();
+  try {
+    renderer.setRenderTarget(target);
+    renderer.render(scene, camera);
+  } finally {
+    renderer.setRenderTarget(previous);
+    target.dispose();
+    strand.visible = spoonBroth.visible = false;
+  }
+  return { scene, camera, bowl, cond, chop, spoon, strand, spoonBroth, restChop, restSpoon, fit };
+}
+
 export const PhoEating = {
-  run(ctx) {
+  ambient(ctx) {
+    prepareTable(ctx);
+    return {};
+  },
+  async run(ctx) {
+    const state = prepareTable(ctx);
+    await state.ready;
+    if (state.error) throw state.error;
+    if (state.disposed) return new PhoMeal().result();
     return new Promise((resolve) => {
       const game = ctx.game;
       const meal = new PhoMeal();
 
-      // ---------------------------------------------------------------- 3D scene
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color("#ffe7c2");
-      scene.add(new THREE.HemisphereLight("#fff6e8", "#b7a58c", 1.7));
-      const sun = new THREE.DirectionalLight("#fff1d6", 2.2);
-      sun.position.set(0.4, 1.2, 0.5);
-      sun.castShadow = true;
-      sun.shadow.mapSize.set(1024, 1024);
-      Object.assign(sun.shadow.camera, { left: -0.4, right: 0.4, top: 0.4, bottom: -0.4, near: 0.1, far: 3 });
-      sun.shadow.bias = -0.0003;
-      scene.add(sun);
-
-      const table = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.7), toon("#4da3ff"));
-      table.position.y = -0.02;
-      table.receiveShadow = true;
-      scene.add(table);
-      // street tiles below for context
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), toon("#d8c8ae"));
-      floor.rotation.x = -Math.PI / 2;
-      floor.position.y = -0.5;
-      scene.add(floor);
-
-      const bowl = makeBowl();
-      scene.add(bowl);
-      const cond = makeCondiments();
-      scene.add(cond.group);
-      const { chop, spoon } = makeUtensils();
-      scene.add(chop, spoon);
-      const restChop = new THREE.Vector3(0.1, 0.13, 0.05);
-      const restSpoon = new THREE.Vector3(-0.1, 0.11, 0.07);
-      // Utensils point their handles toward "you": chopsticks in the right hand, spoon in the left.
-      chop.position.copy(restChop);
-      chop.lookAt(restChop.clone().add(new THREE.Vector3(0.35, 1, 0.3)));
-      spoon.position.copy(restSpoon);
-      spoon.lookAt(restSpoon.clone().add(new THREE.Vector3(-0.35, 0, 0.9)));
-
-      // Noodle strand lifted by the chopsticks.
-      const strand = new THREE.Group();
-      for (let i = 0; i < 4; i++) {
-        const pts = [];
-        for (let s = 0; s <= 8; s++) pts.push(new THREE.Vector3((i - 1.5) * 0.003 + Math.sin(s + i) * 0.003, -s * 0.012, Math.cos(s * 0.7 + i) * 0.003));
-        strand.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.0026, 5), toon("#f6f0df")));
-      }
-      strand.visible = false;
-      scene.add(strand);
-      const spoonBroth = new THREE.Mesh(new THREE.CircleGeometry(0.018, 14), toon("#e3a85a"));
-      spoonBroth.rotation.x = -Math.PI / 2;
-      spoonBroth.position.y = 0.022;
-      spoonBroth.scale.set(1, 1.3, 1);
-      spoonBroth.visible = false;
-      spoon.add(spoonBroth);
-
-      const camera = new THREE.PerspectiveCamera(VIEW.fov, 1, 0.01, 10);
-      const fit = () => {
-        const aspect = innerWidth / innerHeight;
-        camera.aspect = aspect;
-        // Portrait screens need the camera further away to keep the condiments in view.
-        const d = aspect < 1 ? 0.7 / Math.max(aspect, 0.45) : 0.72;
-        camera.position.set(0, d * 0.85, d * 0.6);
-        camera.lookAt(0, 0, aspect < 1 ? 0.02 : 0.0);
-        camera.updateProjectionMatrix();
-      };
+      const { scene, camera, bowl, cond, chop, spoon, strand, spoonBroth, restChop, restSpoon, fit } = state.table;
       fit();
       addEventListener("resize", fit);
       game.view = { scene, camera };
       syncBowl(bowl, meal);
+      let closed = false;
+      let finishTimer;
 
       // ---------------------------------------------------------------- animation helpers
       let busy = false;
@@ -147,7 +213,8 @@ export const PhoEating = {
           shake -= dt;
           camera.position.x = shake > 0 ? Math.sin(time * 60) * 0.006 * shake : 0;
         }
-        // gentle steam bob on the broth
+        bowl.userData.update(dt, time);
+        // Gentle movement on the broth
         bowl.userData.broth.rotation.z = Math.sin(time * 0.5) * 0.05;
         // hover highlight
         for (const [id, obj] of Object.entries(cond.items)) {
@@ -345,7 +412,8 @@ export const PhoEating = {
       const finish = async () => {
         say(TXT.done, "good");
         sfx.good();
-        await new Promise((r) => setTimeout(r, 1200));
+        await new Promise((r) => { finishTimer = setTimeout(r, 1200); });
+        if (closed) return;
         cleanup();
         const res = meal.result();
         const tips = [
@@ -377,17 +445,21 @@ export const PhoEating = {
       };
 
       const cleanup = () => {
+        if (closed) return;
+        closed = true;
+        clearTimeout(finishTimer);
         canvas.removeEventListener("pointerdown", onDown);
         canvas.removeEventListener("pointermove", onMove);
         canvas.style.cursor = "";
         removeEventListener("resize", fit);
         game.updaters.delete(update);
-        game.view = null;
+        if (game.view?.scene === scene) game.view = null;
+        tables.delete(ctx.scene);
         root.className = "";
         root.innerHTML = "";
         document.body.classList.remove("mg-ui");
       };
-      ctx.scene.onDispose?.(cleanup);
+      ctx.scene.onDispose(() => { cleanup(); resolve(meal.result()); });
 
       renderMeters();
       renderButtons();

@@ -63,3 +63,12 @@ in the verified full run (about four minutes with screenshots and both extras
 on this GPU). Both required `hverify` checks passed; no cases are marked `todo`.
 If a future game blocker appears, document its scenario/step here and mark that
 case `todo`; do not weaken assertions or modify game code to hide failures.
+
+## Gates
+
+Each scenario fails if:
+
+- any step logs a `stuck` or `teleport` event;
+- fewer than 4 NPCs get more than 1 m from their start position at any point during a 10 s life sample at the spawn (read every 0.5 s).
+
+The sample is stored in `log.json` as `life` (`npcs`, `movingNpcs`, `vehicles`, `movingVehicles`). The earlier checks still apply: the result screen is reached, there are no page errors, and no step exceeds the step timeout.

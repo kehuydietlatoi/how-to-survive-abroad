@@ -48,6 +48,32 @@ Optional: Blender MCP can also call Hyper3D Rodin (text → 3D, needs an API key
 
 The menu globe's land dots come from **Natural Earth** 110m land polygons (public domain, naturalearthdata.com), rasterised by `scripts/build-landmask.mjs` into `src/ui/landmask.js` (a 2° bitset). Regenerate with `node scripts/build-landmask.mjs ne_110m_land.geojson`.
 
-## 6. More procedural props
+## 6. Country prop packs
+
+All prop modules are merged into `ALL_PROPS` in `src/world/registry.js`. A map item can name any of them with `prop: "<name>"` and pass positional `args`. New country props go into the country file.
+
+- **`src/world/propsVietnam.js` (`VN_PROPS`):** Vietnamese street vehicles and props. These are the xích lô, loaded scooters, the bicycle with goods, the quang gánh vendor, the Hanoi bus and the taxi, plus facade presets (`oldQuarterHouse`, `colonialFacade`) and street dressing (`plantPots`, `awning`, `streetSign`, `vendorCartWheeled`).
+- **`src/world/propsGermany.js` (`DE_PROPS`):**
+  - Vehicles: `tram(line, dest, sections 2–3, color)`, `parcelVan(color, stripe)`, `binLorry(color)`, `germanCar(color)` and `germanTaxi(color)`.
+  - Bikes: `cityBike(color, variant)`, `cargoBike(color, boxColor)` and `bikeRack(n, colors)`.
+  - Track and road markings: `tramTrack(length)`, `overheadWire(length, height, spacing)` and `bikeLaneMarking(length, color)`.
+  - Facades: `altbauFacade(floors 4–5, shop "spaeti"|"baeckerei"|"apotheke"|"", colorIndex, width)` and `halfTimberedHouse(plaster, timber, floors)`.
+  - Street furniture: `litfassSaeule(posterIndex)` and `streetSignDE(name, number)`.
+  - Vehicles run along local z with the front at +z.
+  - Facades set `userData.fade` so they join the cut-away.
+
+## 7. Map fields for life and camera (see the header comment in `src/world/World.js`)
+
+- **`npc` + `path`:** a walking pedestrian. Use `{ npc, path: [[x,z], ...], speed?, loop?: true | "pingpong" | false, pause?: [min, max] }`. It starts at `path[0]`, pauses at waypoints and yields within 1 m of the player.
+- **`crowd`:** `{ count, area: [minX, minZ, maxX, maxZ], npcs?: [model, ...] }` spawns wanderers that pick random points in the area. There is one crowd per map.
+- **`traffic`:** `[{ from: [x,z], to: [x,z], vehicles: [{ prop, args? } | { model, s?, tint? }], speed?: [min, max], spacing?: 12, count?: 3 }]`.
+  - Vehicles wrap back to `from`.
+  - `spacing` is centre-to-centre, so allow for the longest vehicle.
+  - Vehicles yield within 3 m of the player.
+  - Path pedestrians, crowd and traffic have no colliders.
+- **`camera`:** `{ height, distance, fov?, lookAhead?, aim? }` is merged over the default follow rig (`DEFAULT_RIG` in `Game.js`: 5.5 / 14 / 36° / 1.6 / 3).
+- **`userData.update(dt, time)`:** any placed object can define this hook, and `World.update` calls it every frame. Props use it for wheel spin (driven by their own movement), the tram pantograph, swaying laundry on Hanoi facades.
+
+## 8. More procedural props
 
 `src/world/propsWorld.js` adds the props that were built for the world scenarios (ticket gate, vending machine, grill table, rickshaw, cow, Thai temple & Buddha shrine, phone box, bar counter, diner booth, café table, bicycle, bakery, Sacré-Cœur, beach flags / lifeguard tower / umbrella…), built the same way as `props.js`. Those scenarios are temporarily removed from the game; the props are kept for reuse.

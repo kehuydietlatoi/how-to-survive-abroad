@@ -1,7 +1,7 @@
 // Start at Lindenstraße 12 (x = 0), then the Bürgeramt waiting hall (x = 100).
 import { lindenstrasse } from "../lindenstrasse.js";
 
-const street = lindenstrasse(0, { bins: true });
+const street = lindenstrasse(0, { bins: true, variant: "altbau" });
 const H = 100; // hall centre x
 
 const items = [...street.items];
@@ -34,15 +34,40 @@ for (let i = 0; i < 6; i++) {
   items.push({ npc: clerks[i], p: [x, -12.2], r: 0, id: `clerk${i + 1}` });
 }
 
+// Looping visits from the front of the chair rows to counters 2 and 5. These are
+// ambient appointments; Platz 4 and the player's check-in route remain clear.
+for (const [i, path] of [
+  [[-5, -0.7], [-7.2, -2.5], [-7.2, -9.65], [-9.5, -7.8], [-9.5, -1.4]],
+  [[5, -0.7], [7.2, -2.5], [7.2, -9.65], [10, -7.8], [10, -1.4]],
+].entries()) items.push({
+  npc: ["character-female-a", "character-male-f"][i], id: `appointmentVisitor${i}`,
+  path: path.map(([x, z]) => [H + x, z]), speed: 0.95 + i * 0.12,
+  loop: true, pause: [1, 2.2], collide: false,
+});
+
+// Side aisles and the open space between chairs and board provide people-watching
+// during the call-board wait. Path followers switch to idle at stops, never moonwalk.
+for (const [i, path] of [
+  [[-11.2, 3], [-11.2, -5], [-10.2, -5], [-10.2, 3]],
+  [[10.5, 4.5], [10.5, -6.5], [11.7, -6.5], [11.7, 4.5]],
+  [[-2.1, -2.5], [2.1, -2.5], [2.1, -4.6], [-2.1, -4.6]],
+].entries()) items.push({
+  npc: ["character-female-d", "character-male-c", "character-female-b"][i], id: `hallWalker${i}`,
+  path: path.map(([x, z]) => [H + x, z]), speed: 0.85 + i * 0.1,
+  loop: true, pause: [0.3, 0.8], collide: false,
+});
+
 export default {
   sky: "#cfe8ff",
   fog: [45, 140],
+  camera: { height: 5.5, distance: 14, aim: 3, fov: 44 },
   grounds: [
     { size: [80, 50], p: [0, -4], color: "#b9dca3" },
     { size: [50, 40], p: [H, -3], color: "#c9cfc2" },
   ],
   spawns: { start: street.spawns.home, hall: [H, 5.5, 180] },
   items,
+  traffic: street.traffic,
   walls: [...street.walls, [H - 15, 6.8, H + 15, 7.4]],
   interactables: [
     {
