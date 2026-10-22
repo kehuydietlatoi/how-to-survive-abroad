@@ -55,17 +55,10 @@ export function labelSprite(text, { bg = "#ffffff", fg = "#3b3355" } = {}) {
 
 const COLLIDE_KITS = new Set(["commercial", "suburban", "cars"]);
 // Cutaway: only occluders within ±CUTAWAY_HALF_WIDTH m (x) of the player are tested, against
-// sight lines to these points on the body ([dx, dy] from the head).
+// sight lines to a grid of points spanning the body (arms out) from head to feet ([dx, dy] from the head).
 const CUTAWAY_HALF_WIDTH = 4;
 const CUTAWAY_HYSTERESIS = 0.4;
-// Overhead clutter that joins the cutaway even without `fade` (it hangs across the low camera's view).
-const CUTAWAY_PROPS = new Set(["lanternString", "cableTangle"]);
-const SIGHT_POINTS = [
-  [0, 0.3],
-  [-0.35, -0.4],
-  [0.35, -0.4],
-  [0, -0.9],
-];
+const SIGHT_POINTS = [-0.6, 0, 0.6].flatMap((dx) => [0.3, -0.3, -0.9].map((dy) => [dx, dy]));
 
 export class World {
   constructor(scene) {
@@ -142,7 +135,7 @@ export class World {
     obj.rotation.y = THREE.MathUtils.degToRad(item.r || 0);
     this.root.add(obj);
     if (item.hidden) obj.visible = false;
-    if (item.fade ?? CUTAWAY_PROPS.has(item.prop)) {
+    if (item.fade) {
       obj.updateMatrixWorld(true);
       const box = new THREE.Box3().setFromObject(obj);
       this.occluders.push({ obj, box, opacity: 1, mats: null });
@@ -225,9 +218,9 @@ export class World {
   }
 
   /**
-   * Cutaway view: fade "fade"-marked objects in a narrow corridor (±CUTAWAY_HALF_WIDTH m) around
-   * the player that stand between the player and the camera (+z) or cut a sight line from the
-   * camera to the body. `target` is the player's head.
+   * Cutaway view: fade only "fade"-marked objects within a narrow corridor (±CUTAWAY_HALF_WIDTH m
+   * in x) around the player that actually cut a sight line from the camera to the player's body.
+   * `target` is the player's head.
    */
   updateOccluders(dt, camera, target) {
     // Floating labels only for things nearby (they draw on top of walls).
@@ -238,14 +231,10 @@ export class World {
     const from = camera.position;
     for (const o of this.occluders) {
       const b = o.box;
-      // Once faded, an object stays faded until it clears the corridor by a margin (no flicker).
-      const m = o.opacity < 1 ? CUTAWAY_HYSTERESIS : 0;
-      const inCorridor = b.min.x - m < target.x + CUTAWAY_HALF_WIDTH && b.max.x + m > target.x - CUTAWAY_HALF_WIDTH;
-      // Wholly between the player and the camera: it would wall in the view around the player.
-      // (Centre test: awnings and balconies may reach over the player.)
-      const inFront = (b.min.z + b.max.z) / 2 + m > target.z + 1 && b.min.z < from.z;
-      const box = m ? this._box.copy(b).expandByScalar(m) : b;
-      const blocking = inCorridor && (inFront || this._hidesTarget(box, from, target));
+      const inCorridor = b.min.x < target.x + CUTAWAY_HALF_WIDTH && b.max.x > target.x - CUTAWAY_HALF_WIDTH;
+      // Once faded, an object stays faded until the sight lines clear it by a margin (no flicker).
+      const box = o.opacity < 1 ? this._box.copy(b).expandByScalar(CUTAWAY_HYSTERESIS) : b;
+      const blocking = inCorridor && this._hidesTarget(box, from, target);
       const goal = blocking ? 0 : 1;
       if (Math.abs(o.opacity - goal) < 0.01) continue;
       if (!o.mats) {
@@ -257,19 +246,19 @@ export class World {
         });
       }
       o.opacity += (goal - o.opacity) * Math.min(1, dt * 8);
+      if (goal === 0 && o.opacity < 0.05) o.opacity = 0;
+      if (goal === 1 && o.opacity > 0.98) o.opacity = 1;
       for (const m of o.mats) {
         m.transparent = o.opacity < 0.99;
         m.opacity = o.opacity;
         m.depthWrite = o.opacity > 0.9;
       }
       o.obj.traverse((m) => m.isMesh && (m.castShadow = o.opacity > 0.5));
-      o.obj.visible = o.opacity > 0.04; // fully hidden cutaway once faded out
-      if (goal === 0 && o.opacity < 0.05) o.opacity = 0;
-      if (goal === 1 && o.opacity > 0.98) o.opacity = 1;
+      o.obj.visible = o.opacity > 0; // fully hidden cutaway once faded out
     }
   }
 
-  /** Does `box` cut a sight line from `from` to the head, shoulders or feet below `head`? */
+  /** Does `box` cut a sight line from `from` to any SIGHT_POINTS on the body below `head`? */
   _hidesTarget(box, from, head) {
     for (const [dx, dy] of SIGHT_POINTS) {
       const eye = this._eye.set(head.x + dx, head.y + dy, head.z);
