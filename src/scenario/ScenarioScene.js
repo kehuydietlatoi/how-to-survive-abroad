@@ -34,10 +34,12 @@ export class ScenarioScene {
   async load(onProgress) {
     const { map } = this.def;
     this.game.setEnvironment({ sky: map.sky, fog: map.fog });
+    this.game.setCameraRig(map.camera);
     this.world = new World(this.game.scene);
     await this.world.build(map, onProgress);
     this.player = await Character.create(this.avatar);
     this.world.root.add(this.player.root);
+    this.world.player = this.player;
     this.teleport(map.spawns.start);
     this._update = (dt, time) => this.update(dt, time);
     this.game.updaters.add(this._update);
@@ -326,6 +328,7 @@ export class ScenarioScene {
     this.disposed = true;
     for (const fn of this._disposers.splice(0)) fn();
     this.game.view = null;
+    this.game.setCameraRig(null);
     this.pendingInteract = null;
     this.game.updaters.delete(this._update);
     for (const a of this.ambient || []) a.dispose?.();
