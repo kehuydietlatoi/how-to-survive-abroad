@@ -1,4 +1,4 @@
-import { t } from "../i18n/i18n.js";
+import { t, onLangChange } from "../i18n/i18n.js";
 import { sfx } from "../core/Audio.js";
 
 // Small DOM helpers for the HTML overlay. Everything returns promises so scenario code reads linearly.
@@ -24,9 +24,23 @@ export function rich(s) {
 }
 
 let dialogOpen = false;
+let dialogTranslations = [];
+let objectiveText = null;
+let toastText = null;
+let transitionText = null;
 export const isDialogOpen = () => dialogOpen;
 
+// Keep raw bilingual values in render closures. Updating only text leaves the
+// pending dialog promise, selected options, focus and input handlers intact.
+function dialogText(node, render) {
+  const refresh = () => { node.innerHTML = render(); };
+  dialogTranslations.push(refresh);
+  refresh();
+  return node;
+}
+
 function openDialog(build) {
+  dialogTranslations = [];
   const root = $("#dialog");
   root.innerHTML = "";
   const panel = el("div", "panel pop");
@@ -38,6 +52,7 @@ function openDialog(build) {
     build(panel, (value) => {
       root.classList.remove("show");
       dialogOpen = false;
+      dialogTranslations = [];
       document.body.classList.remove("dialog-open");
       setTimeout(() => {
         if (!dialogOpen) root.innerHTML = "";
@@ -49,12 +64,12 @@ function openDialog(build) {
 
 function header(panel, speaker, icon) {
   if (!speaker && !icon) return;
-  const h = el("div", "speaker", `${icon ? `<span class="icon">${icon}</span>` : ""}${speaker ? esc(t(speaker)) : ""}`);
+  const h = dialogText(el("div", "speaker"), () => `${icon ? `<span class="icon">${icon}</span>` : ""}${speaker ? esc(t(speaker)) : ""}`);
   panel.appendChild(h);
 }
 
 function continueButton(panel, close, label = "continue") {
-  const b = el("button", "btn primary", esc(t(label)) + (isTouch ? "" : ' <span class="key">E</span>'));
+  const b = dialogText(el("button", "btn primary"), () => esc(t(label)) + (isTouch ? "" : ' <span class="key">E</span>'));
   let done = false;
   const fire = () => {
     if (done) return;
@@ -79,7 +94,7 @@ function continueButton(panel, close, label = "continue") {
 export function info(text, { speaker, icon, card, button } = {}) {
   return openDialog((panel, close) => {
     header(panel, speaker, icon);
-    panel.appendChild(el("p", "text", rich(t(text))));
+    panel.appendChild(dialogText(el("p", "text"), () => rich(t(text))));
     if (card) panel.appendChild(card);
     continueButton(panel, close, button);
   });
@@ -92,7 +107,7 @@ export function info(text, { speaker, icon, card, button } = {}) {
 export function choice(prompt, options, { speaker, icon, acceptable = () => true } = {}) {
   return openDialog((panel, close) => {
     header(panel, speaker, icon);
-    panel.appendChild(el("p", "text", rich(t(prompt))));
+    panel.appendChild(dialogText(el("p", "text"), () => rich(t(prompt))));
     const list = el("div", "options");
     panel.appendChild(list);
     const keys = ["1", "2", "3", "4", "5"];
@@ -115,7 +130,7 @@ export function choice(prompt, options, { speaker, icon, acceptable = () => true
       panel.querySelector(".feedback")?.remove();
       panel.querySelector(".btn.primary")?.remove();
       const fb = el("div", `feedback ${kind}`);
-      fb.innerHTML = `<b>${esc(t(opt.correct ? "correct" : ok ? "hmm" : "notQuite"))}</b> ${rich(t(opt.feedback || ""))}`;
+      dialogText(fb, () => `<b>${esc(t(opt.correct ? "correct" : ok ? "hmm" : "notQuite"))}</b> ${rich(t(opt.feedback || ""))}`);
       panel.appendChild(fb);
       if (ok) {
         continueButton(panel, () => close({ index: i, first }));
@@ -136,7 +151,7 @@ export function choice(prompt, options, { speaker, icon, acceptable = () => true
       );
     };
     options.forEach((o, i) => {
-      const b = el("button", "btn option", `<span class="num">${keys[i]}</span> ${rich(t(o.text))}`);
+      const b = dialogText(el("button", "btn option"), () => `<span class="num">${keys[i]}</span> ${rich(t(o.text))}`);
       b.onclick = () => pick(i);
       list.appendChild(b);
     });
@@ -153,14 +168,19 @@ export function choice(prompt, options, { speaker, icon, acceptable = () => true
 
 let toastTimer;
 export function toast(text, kind = "") {
+  toastText = text;
   const tEl = $("#toast");
   tEl.className = `show ${kind}`;
   tEl.innerHTML = rich(t(text));
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (tEl.className = ""), 2600);
+  toastTimer = setTimeout(() => {
+    tEl.className = "";
+    toastText = null;
+  }, 2600);
 }
 
 export function setObjective(text) {
+  objectiveText = text;
   const o = $("#objective");
   if (!text) {
     o.classList.remove("show");
@@ -193,8 +213,16 @@ export function fade(on, ms = 450) {
 }
 
 export function fadeText(text) {
+  transitionText = text;
   $("#fade").innerHTML = text ? `<div>${rich(t(text))}</div>` : "";
 }
+
+onLangChange(() => {
+  for (const refresh of dialogTranslations) refresh();
+  if (objectiveText) setObjective(objectiveText);
+  if (toastText != null) $("#toast").innerHTML = rich(t(toastText));
+  if (transitionText) fadeText(transitionText);
+});
 
 export function showScreen(html, cls = "") {
   const s = $("#screen");
