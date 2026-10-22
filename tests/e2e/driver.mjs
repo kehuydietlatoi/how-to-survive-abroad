@@ -232,11 +232,42 @@ export class Playthrough {
         if (await click(selector)) return;
       }
     } else if (step.game === 'sort') {
-      if (await click('.sort-summary button') || await click('.sort-explain.show button')) return;
+      if (await p.locator('.sort-summary').isVisible()) {
+        this.active.events.push({ type: 'sortSummary', text: await p.locator('.sort-summary').innerText() });
+        await click('.sort-summary button');
+        return;
+      }
+      const count = await p.locator('.sort-count').textContent();
+      const waitForNext = () => p.waitForFunction(previous =>
+        document.querySelector('.sort-summary') ||
+        document.querySelector('.sort-count')?.textContent !== previous, count);
+      if (await click('.sort-explain.show button')) {
+        await waitForNext();
+        return;
+      }
       const name = await p.locator('.sort-card .cn').textContent();
       const item = step.params.items.find(i => Object.values(i.name).includes(name));
       if (!item) throw new Error(`Unknown sort card: ${name}`);
+      await p.evaluate(() => {
+        document.querySelector('.sort-zones').addEventListener('click', e => {
+          window.__sortClick = {
+            card: document.querySelector('.sort-card .cn')?.textContent,
+            zone: e.target.closest('[data-z]')?.dataset.z,
+          };
+        }, { once: true, capture: true });
+      });
       await click(`[data-z="${[].concat(item.zone)[0]}"]`);
+      this.active.events.push({ type: 'sortAnswer', expectedCard: name, ...await p.evaluate(() => window.__sortClick) });
+      // A click returns before the 380 ms flight finishes. Wait for the next
+      // card before reading its answer: Playwright may defer a later click
+      // until a moving bin settles, applying a stale answer to the next card.
+      await p.waitForFunction(previous =>
+        document.querySelector('.sort-explain.show') ||
+        document.querySelector('.sort-summary') ||
+        document.querySelector('.sort-count')?.textContent !== previous, count);
+      if (await p.locator('.sort-explain.show').isVisible()) {
+        throw new Error(`Correct-answer sort bot made a mistake on ${name}`);
+      }
     } else if (step.game === 'callBoard') {
       const called = await p.evaluate(() => document.querySelector('.cb-row.new span')?.textContent);
       if (called?.trim() === (step.params?.mine || 'A-117')) await click('.cb-btn');
