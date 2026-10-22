@@ -178,6 +178,7 @@ export class Playthrough {
       }));
       await this.page.waitForTimeout(180);
     }
+    await this.sampleLife();
     if (process.env.E2E_EXTRAS === '1' && this.shots) {
       await this.page.setViewportSize({ width: 390, height: 844 });
       await this.shot('extra-mobile');
@@ -198,6 +199,31 @@ export class Playthrough {
         await this.shot('extra-vietnamese', page);
       } finally { await localized.close(); }
     }
+  }
+
+  /** Count NPCs and vehicles that move more than 1 m over 10 s of roaming. */
+  async sampleLife(seconds = 10) {
+    const read = () => this.page.evaluate(() => {
+      const { world } = window.__hsa.scene;
+      return {
+        npcs: world.npcs.map(c => [c.root.position.x, c.root.position.z]),
+        vehicles: world.life.lanes.flatMap(l => l.objects.map(o => [o.position.x, o.position.z])),
+      };
+    });
+    // Sample every 0.5 s and keep each object's largest distance from its start, so a walker that
+    // pauses at a waypoint or loops back to where it began still counts as moving.
+    const before = await read();
+    const far = { npcs: before.npcs.map(() => 0), vehicles: before.vehicles.map(() => 0) };
+    for (let t = 0; t < seconds * 2; t++) {
+      await this.page.waitForTimeout(500);
+      const now = await read();
+      for (const k of ['npcs', 'vehicles']) {
+        before[k].forEach((p, i) => { const q = now[k][i]; if (q) far[k][i] = Math.max(far[k][i], Math.hypot(p[0] - q[0], p[1] - q[1])); });
+      }
+    }
+    const moved = d => d.filter(m => m > 1).length;
+    this.log.life = { seconds, npcs: before.npcs.length, movingNpcs: moved(far.npcs),
+      vehicles: before.vehicles.length, movingVehicles: moved(far.vehicles) };
   }
 
   checkDeadline() {
