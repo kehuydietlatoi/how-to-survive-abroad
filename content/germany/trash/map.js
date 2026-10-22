@@ -1,7 +1,7 @@
 // Lindenstraße 12: bin corner beside the house and the glass bank down the street.
 import { lindenstrasse } from "../lindenstrasse.js";
 
-const street = lindenstrasse(0, { bins: true, glass: true });
+const street = lindenstrasse(0, { bins: true, glass: true, variant: "suburban" });
 
 export default {
   sky: "#cfe8ff",
@@ -13,13 +13,14 @@ export default {
   items: [
     ...street.items,
     { prop: "suitcase", args: ["#8ecae6"], p: [1.5, -7.2], collide: false, id: "trashBag" },
-    { npc: "character-male-f", path: [[-12, -5.2], [3, -5.2], [12, -5.2]], speed: 1.1, loop: "pingpong", pause: [0.5, 1.2], id: "neighbour" },
+    { npc: "character-male-f", path: [[-12, -5.7], [3, -5.7], [12, -5.7]], speed: 1.1, loop: "pingpong", pause: [0.5, 1.2], id: "neighbour" },
   ],
-  traffic: [{
-    from: [-34, 0], to: [34, 0],
-    vehicles: [{ model: "cars/sedan" }, { prop: "cityBus", args: ["34", "Lindenstraße"] }],
-    speed: [4, 5.5], spacing: 18, count: 3,
-  }],
+  traffic: [
+    { ...street.traffic[0], vehicles: [
+      { prop: "germanCar", args: ["#426a91"] }, { prop: "binLorry" }, { prop: "parcelVan" },
+    ] },
+    ...street.traffic.slice(1),
+  ],
   walls: street.walls,
   interactables: [
     {
