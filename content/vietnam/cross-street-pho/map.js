@@ -1,3 +1,5 @@
+import { mulberry32 } from "../../../src/minigames/crossingSim.js";
+
 // Hanoi Old Quarter street. Road runs along x (z = -5..5), guesthouse on the south
 // (+z, near the camera) side, phở stall on the north (-z) side.
 
@@ -14,11 +16,14 @@ for (let x = -45; x <= 45; x += 10) items.push({ model: "roads/road-straight", p
 items.push({ prop: "slab", args: [100, 5.2, 0.16, "#e9dcc6"], p: [0, 7.6] });
 items.push({ prop: "slab", args: [100, 5.2, 0.16, "#e9dcc6"], p: [0, -7.6] });
 
-// Tube houses.
+// Narrow, weathered shop houses: stable variation across both sides of the street.
+const rand = mulberry32(7107);
 for (let i = 0; i < 18; i++) {
   const x = -38 + i * 4.5;
-  items.push({ prop: "tubeHouse", args: [houseColors[i % 8], 2 + (i % 3), 4.4, signsSouth[i]], p: [x, 13.2], r: 180, fade: true });
-  items.push({ prop: "tubeHouse", args: [houseColors[(i + 3) % 8], 2 + ((i + 1) % 3), 4.4, signsNorth[i]], p: [x, -13.2], r: 0 });
+  const south = Math.floor(rand() * 1000), north = Math.floor(rand() * 1000);
+  // The south row sits behind the camera rather than enclosing the spawn in cut-away walls.
+  items.push({ prop: "oldQuarterHouse", args: [houseColors[south % 8], south, signsSouth[i] || "Tạp hoá"], p: [x, 21], r: 180, fade: true });
+  items.push({ prop: "oldQuarterHouse", args: [houseColors[north % 8], north, signsNorth[i] || "Cửa hàng"], p: [x, -13.2], r: 0 });
 }
 
 // Street life: parked bikes, vendors, poles, cables, lanterns.
@@ -27,16 +32,21 @@ items.push(
   { prop: "parkedBikes", args: [4], p: [6.5, 9.2], r: 0 },
   { prop: "parkedBikes", args: [6], p: [-9, -9], r: 180 },
   { prop: "parkedBikes", args: [3], p: [12, -9], r: 180 },
-  { prop: "vendorCart", p: [-18, 7.2], r: 20 },
-  { prop: "vendorCart", p: [16, -6.4], r: -30 },
+  { prop: "goodsBicycle", args: ["#497f78", "flowers"], p: [-15, 9.1], r: 80, y: 0.16 },
+  { prop: "goodsBicycle", args: ["#a26e68", "baskets"], p: [-6.5, -9.1], r: -85, y: 0.16 },
+  { prop: "loadedScooter", args: ["#cf8e51", "boxes"], p: [-9, 9.3], r: 85, y: 0.16 },
+  { prop: "loadedScooter", args: ["#658e9a", "gas"], p: [9, -9.2], r: -90, y: 0.16 },
+  { prop: "quangGanh", args: ["#81548a", 2], p: [-4.4, -9.2], r: -10, y: 0.16 },
+  { prop: "vendorCartWheeled", args: ["#4e8f7b", 1], p: [-18, 9.0], r: 20, y: 0.16 },
+  { prop: "vendorCartWheeled", args: ["#bc6e51", 0], p: [12, -8.7], r: -30, y: 0.16 },
   { prop: "utilityPole", p: [-16, 5.6] },
   { prop: "utilityPole", p: [14, 5.6] },
   { prop: "utilityPole", p: [-16, -5.6] },
   { prop: "utilityPole", p: [14, -5.6] },
-  { prop: "cableTangle", args: [30], p: [-1, 5.6] },
-  { prop: "cableTangle", args: [30], p: [-1, -5.6] },
-  { prop: "lanternString", args: [8], p: [-2, 9.9] },
-  { prop: "lanternString", args: [8], p: [6, -9.9] },
+  // Leave a clear +/-4 m crossing corridor; Line objects do not participate in mesh fading.
+  ...[-5.6, 5.6].flatMap(z => [-11, 11].map(x => ({ prop: "cableTangle", args: [14], p: [x, z], y: 0.8 }))),
+  { prop: "lanternString", args: [6], p: [-10, 9.9], fade: true },
+  { prop: "lanternString", args: [6], p: [9, -9.9], fade: true },
   { prop: "tree", p: [-26, 6.2] },
   { prop: "tree", p: [24, -6.2] },
   { prop: "plasticStool", args: ["#4da3ff"], p: [-17, 8.6] },
@@ -56,6 +66,19 @@ items.push(
   { prop: "phoBowl", p: [5.6, -7.0], y: 0.53 }
 );
 
+// Sidewalk paths stay outside the x=0 crossing and the stall's approach. No map.traffic:
+// StreetCrossing owns all road traffic, including its avoidance and collision sizes.
+for (const [i, path] of [
+  [[-17, 6.2], [-8, 6.2]], [[-7.5, 7.0], [-3.7, 7.0]],
+  [[5, 6.3], [12, 6.3]], [[14, 7.1], [20, 7.1]],
+  [[-15, -6.1], [-8, -6.1]], [[-7, -7.4], [-3.6, -7.4]],
+  [[8, -6.2], [14, -6.2]], [[8, -7.5], [13, -7.5]],
+].entries()) {
+  items.push({ npc: ["character-female-a", "character-male-b", "character-female-c", "character-male-e"][i % 4],
+    id: `sidewalkWalker${i}`, path: i % 2 ? [...path].reverse() : path,
+    speed: 0.8 + i % 3 * 0.13, loop: "pingpong", pause: [0.3, 0.8], collide: false });
+}
+
 // People.
 items.push(
   { npc: "character-female-d", p: [-10, 8.8], r: -70, id: "guesthouseOwner" },
@@ -69,6 +92,7 @@ items.push(
 export default {
   sky: "#ffe7c2",
   fog: [45, 120],
+  camera: { height: 5.2, distance: 13, fov: 48, aim: 4.5, lookAhead: 1.2 },
   grounds: [{ size: [140, 60], p: [0, 0], color: "#d8c8ae" }],
   spawns: {
     start: [-12, 8.6, 180],
