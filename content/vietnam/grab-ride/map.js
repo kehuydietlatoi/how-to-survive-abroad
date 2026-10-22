@@ -11,8 +11,9 @@ const items = [];
 for (let x = -35; x <= 35; x += 10) items.push({ model: "roads/road-straight", p: [x, 0] });
 items.push({ prop: "slab", args: [80, 5.2, 0.16, "#e9dcc6"], p: [0, 7.6] });
 items.push({ prop: "slab", args: [84, 4.2, 0.16, "#dfd2b8"], p: [0, -7.1] }); // lakeside promenade
-// The colonial hotel row starts east of the spawn: the spawn camera must have clear
-// flanks, or near facades loom over the frame around the lake, bridge and plate tags.
+// The colonial hotel row: at the start spawn (x = 4) the two near facades (x = 2, 6.75)
+// sit inside the ±4 m cut-away band and fade, so the lake, bridge and plate tags stay
+// clear of loom and the remaining facades hang past the east frame edge.
 for (let i = 0; i < 9; i++) {
   items.push({ prop: "colonialFacade", args: [facades[i % 8], i % 4], p: [2 + i * 4.75, 13.2], r: 180, fade: true });
 }
@@ -55,9 +56,9 @@ items.push(
 // Grab drivers waiting at the kerb: very similar plates. Only "29B1-234.56" is yours.
 const grab = [
   { id: "driverA", x: -4, color: "#4da3ff", npc: "character-male-b" },
-  { id: "driverOK", x: 0, color: "#e85d75", npc: "character-male-d" },
-  { id: "driverB", x: 2.5, color: "#2b2b2b", npc: "character-male-f" },
-  { id: "driverC", x: 5, color: "#f6c945", npc: "character-female-d" },
+  { id: "driverOK", x: 0.5, color: "#e85d75", npc: "character-male-d" },
+  { id: "driverB", x: 5, color: "#2b2b2b", npc: "character-male-f" },
+  { id: "driverC", x: 9.5, color: "#f6c945", npc: "character-female-d" },
 ];
 for (const g of grab) {
   items.push({ prop: "motorbike", args: [g.color], p: [g.x, 4.3], r: 90, s: 1.35 });
@@ -117,9 +118,10 @@ export default {
     { size: [76, 52], p: [200, -3], color: "#c8bc9e" },
   ],
   spawns: {
-    // Start beside the kerb, in line with the four waiting drivers: the whole plate row
-    // (x = -4..8.5) fits the camera field of view and the lake and bridge sit behind it.
-    start: [-0.5, 7, 180],
+    // Start mid-row among the four waiting drivers (row x = -4..9.5): all plate tags fit
+    // the camera field of view, the lake and bridge sit behind, and both near hotel
+    // facades (x = 2, 6.75) are within the ±4 m cut-away band, so they fade at spawn.
+    start: [4, 7, 180],
     arrive: [198.5, 6.2, 180],
   },
   items,
