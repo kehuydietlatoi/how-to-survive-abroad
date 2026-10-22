@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { steamPlume } from "./props.js";
 import { toon } from "../core/Assets.js";
 import { mulberry32 } from "../minigames/crossingSim.js";
 
@@ -17,8 +18,11 @@ function m(geo, mat, x = 0, y = 0, z = 0) {
   return o;
 }
 
+let porcelainRim;
+
 /** Blue-and-white rim pattern texture (typical Vietnamese porcelain). */
 function rimTexture() {
+  if (porcelainRim) return porcelainRim;
   const c = document.createElement("canvas");
   c.width = 256;
   c.height = 32;
@@ -38,6 +42,7 @@ function rimTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = THREE.RepeatWrapping;
   t.repeat.x = 3;
+  porcelainRim = t;
   return t;
 }
 
@@ -131,7 +136,12 @@ export function makeBowl() {
   const toppings = new THREE.Group(); // what the player adds
   g.add(toppings);
 
-  g.userData = { broth, noodles, beef, toppings, garnish, rand };
+  const steam = steamPlume(0.006, 0.08, 4);
+  steam.position.y = BROTH_TOP + 0.006;
+  g.add(steam);
+  g.userData = { broth, noodles, beef, toppings, garnish, rand,
+    update: (dt, time) => steam.userData.update(dt, time) };
+  g.userData.steam = steam;
   return g;
 }
 
@@ -333,6 +343,8 @@ export function syncBowl(bowl, meal) {
   broth.position.y = y;
   broth.scale.setScalar(0.72 + 0.28 * t); // the bowl narrows towards the bottom
   broth.visible = meal.broth > 0 || meal.noodles > 0;
+  bowl.userData.steam.visible = broth.visible;
+  bowl.userData.steam.position.y = y + 0.006;
   const n = meal.noodles;
   noodles.forEach((b, i) => {
     b.visible = i < n;

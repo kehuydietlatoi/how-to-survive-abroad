@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { CrossingSim } from "./crossingSim.js";
-import { motorbike } from "../world/props.js";
+import { motorbike, box } from "../world/props.js";
+import { toon } from "../core/Assets.js";
 import { Character } from "../world/Character.js";
 import { sfx } from "../core/Audio.js";
 import { t } from "../i18n/i18n.js";
@@ -26,13 +27,19 @@ class TrafficView {
     this.views = new Map(); // bike id -> { obj, rider }
     this.pool = [];
     this.crossing = null; // set while the minigame runs
+    this.disposed = false;
     this.ready = this._prepare();
   }
 
   async _prepare() {
     // Pre-create riders so spawning never waits on async loading.
     const n = 40;
-    for (let i = 0; i < n; i++) this.pool.push(await this._makeView(i));
+    for (let i = 0; i < n && !this.disposed; i++) {
+      const view = await this._makeView(i);
+      if (this.disposed) { view.obj.removeFromParent(); break; }
+      this.pool.push(view);
+      if (i % 4 === 3) await new Promise(resolve => requestAnimationFrame(resolve));
+    }
   }
 
   async _makeView(i) {
@@ -40,15 +47,39 @@ class TrafficView {
     const bike = motorbike(BIKE_COLORS[i % BIKE_COLORS.length]);
     bike.scale.setScalar(1.35);
     obj.add(bike);
+    // Cargo changes only the view: retain the original motorbike scale and sim footprint.
+    // Loads stay inside the handlebar width and behind the rider rather than widening a lane.
+    const variant = i % 4;
+    obj.userData.variant = ["commuter", "delivery", "produce", "flowers"][variant];
+    if (variant === 1) {
+      obj.add(box(0.52, 0.52, 0.56, "#3e9b69", 0, 1.25, -0.63));
+      obj.add(box(0.055, 0.53, 0.57, "#e4d9b0", 0, 1.25, -0.63));
+    } else if (variant === 2) {
+      obj.add(box(0.55, 0.3, 0.55, "#a78352", 0, 1.12, -0.63));
+      for (let k = 0; k < 4; k++) {
+        const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), toon(k % 2 ? "#e6b753" : "#7ca658"));
+        fruit.position.set((k % 2 - 0.5) * 0.17, 1.48, -0.74 + Math.floor(k / 2) * 0.19);
+        obj.add(fruit);
+      }
+    } else if (variant === 3) {
+      obj.add(box(0.5, 0.3, 0.5, "#b98a59", 0, 1.12, -0.62));
+      for (let k = 0; k < 3; k++) {
+        obj.add(box(0.018, 0.35, 0.018, "#5e8750", (k - 1) * 0.14, 1.42, -0.62));
+        const flower = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), toon(k % 2 ? "#edb75a" : "#d98aaa"));
+        flower.position.set((k - 1) * 0.14, 1.77, -0.62);
+        obj.add(flower);
+      }
+    }
     const rider = await Character.create(RIDERS[i % RIDERS.length]);
     rider.play("drive");
     rider.mixer.setTime(Math.random());
-    rider.root.position.set(0, 0.42, -0.35);
+    rider.root.position.set(0, 0.42, variant ? 0.12 : -0.35);
     obj.add(rider.root);
+    if (variant === 1) rider.addHelmet();
     // Conical hat on some riders.
-    if (i % 3 === 0) {
+    if (i % 3 === 0 && variant !== 1) {
       const hat = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.28, 16), new THREE.MeshToonMaterial({ color: "#f2dca0" }));
-      hat.position.set(0, 2.25, -0.35);
+      hat.position.set(0, 2.25, rider.root.position.z);
       obj.add(hat);
     }
     obj.visible = false;
@@ -88,6 +119,7 @@ class TrafficView {
   }
 
   dispose() {
+    this.disposed = true;
     this.group.removeFromParent();
   }
 }
