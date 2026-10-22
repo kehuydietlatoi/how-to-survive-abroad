@@ -4,6 +4,7 @@ import { CollisionWorld } from "../core/Collision.js";
 import { ground } from "./props.js";
 import { ALL_PROPS } from "./registry.js";
 import { Character } from "./Character.js";
+import { Life } from "./Life.js";
 import { t } from "../i18n/i18n.js";
 
 // Builds a fixed map from a data description (see content/*/map.js).
@@ -16,8 +17,16 @@ import { t } from "../i18n/i18n.js";
 //     { model: "roads/road-straight", p:[x,z], r, s?, y?, tint?, collide? }
 //     { prop: "ticketMachine", args?: [...], p, r, y?, collide? }
 //     { npc: "character-female-a", p, r, anim? }
+//     { npc, path: [[x,z], ...], speed?: 1.1, loop?: true|'pingpong'|false,
+//       pause?: [minSeconds,maxSeconds] } (starts at path[0]; pauses idle, yields within 1 m)
 //     any item may have `id` to be looked up later (world.objects[id])
+//     placed objects may define userData.update(dt,time), called every World.update
 //   ],
+//   crowd?: { count, area:[minX,minZ,maxX,maxZ], npcs?: [characterModel,...] },
+//   traffic?: [{ from:[x,z], to:[x,z], vehicles:[{ prop, args? } | { model, s?, tint? }],
+//     speed?: [min,max], spacing?: 12, count?: 3 }],
+//   Traffic wraps to `from`; spacing is centre-to-centre (allow for the longest vehicle).
+//   Path pedestrians, crowd and traffic have NO colliders. Traffic yields within 3 m.
 //   walls: [[minX, minZ, maxX, maxZ, tag?]],
 //   interactables: [{ id, p:[x,z], radius, label:{en,vi}, say?:{en,vi}, y? }]
 // }
@@ -68,6 +77,8 @@ export class World {
     this.collision = new CollisionWorld();
     this.objects = {};
     this.npcs = [];
+    this.life = new Life(this);
+    this.animatedObjects = []; // placed roots; no per-frame scene traversal
     this.interactables = [];
     this.wallBoxes = {};
     this.floors = []; // raised walkable slabs: { minX, maxX, minZ, maxZ, h }
@@ -80,8 +91,9 @@ export class World {
   }
 
   static modelIds(map) {
-    const ids = map.items.filter((i) => i.model).map((i) => i.model);
-    for (const i of map.items) if (i.npc) ids.push(`characters/${i.npc}`);
+    const ids = (map.items || []).filter((i) => i.model).map((i) => i.model);
+    for (const i of map.items || []) if (i.npc) ids.push(`characters/${i.npc}`);
+    ids.push(...Life.modelIds(map));
     return ids;
   }
 
@@ -93,7 +105,8 @@ export class World {
       m.position.z = g.p[1];
       this.root.add(m);
     }
-    for (const item of map.items) await this._place(item);
+    for (const item of map.items || []) await this._place(item);
+    await this.life.build(map);
     for (const w of map.walls || []) {
       const b = this.collision.addBox(w[0], w[1], w[2], w[3], w[4]);
       if (w[4]) (this.wallBoxes[w[4]] ||= []).push(b);
@@ -102,6 +115,7 @@ export class World {
   }
 
   async _place(item) {
+    if (item.npc && item.path) item = { ...item, p: item.path[0] };
     let obj;
     let collider = null;
     if (item.model) {
@@ -120,20 +134,22 @@ export class World {
       if (item.s) obj.scale.setScalar(item.s);
       if (obj.userData.collider && item.collide !== false) collider = obj.userData.collider;
     } else if (item.npc) {
-      const c = await Character.create(item.npc);
+      const c = item.path && !item.helmet ? await Character.acquire(item.npc) : await Character.create(item.npc);
       c.play(item.anim || "idle");
       if (item.helmet) c.addHelmet();
       c.mixer.setTime(Math.random() * 2);
       obj = c.root;
       this.npcs.push(c);
-      if (item.collide !== false) collider = { w: 0.7, d: 0.7, ox: 0, oz: 0 };
+      if (!item.path && item.collide !== false) collider = { w: 0.7, d: 0.7, ox: 0, oz: 0 };
       if (item.id) this.objects[item.id + ":char"] = c;
+      if (item.path) this.life.addPedestrian(c, item);
     } else {
       throw new Error(`bad map item ${JSON.stringify(item)}`);
     }
     obj.position.set(item.p[0], item.y || 0, item.p[1]);
     obj.rotation.y = THREE.MathUtils.degToRad(item.r || 0);
     this.root.add(obj);
+    this.animatedObjects.push(obj);
     if (item.hidden) obj.visible = false;
     if (item.fade) {
       obj.updateMatrixWorld(true);
@@ -271,7 +287,9 @@ export class World {
   }
 
   update(dt, time) {
+    this.life.update(dt);
     for (const n of this.npcs) n.update(dt);
+    for (const obj of this.animatedObjects) obj.userData.update?.(dt, time);
     for (const it of this.interactables) {
       it.ring.visible = it.enabled;
       it.ring.material.opacity = 0.35 + 0.25 * Math.sin(time * 3);
@@ -287,6 +305,7 @@ export class World {
   }
 
   dispose() {
+    this.life.dispose();
     // Geometries/materials are shared through caches, so only detach the tree.
     this.scene.remove(this.root);
   }
